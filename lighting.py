@@ -1,6 +1,11 @@
 #Original code developed for Python 2.7 by Saulius Lukse
 #Translated to Python 3 by Liam Plybon (2022)
 #Anaconda Environment should include OpenCV and Pillow.
+#Venv should include OpenCV and Pillow.
+#Current venv is LightningVenv on home directory.
+
+#This is still the same as the original lightning analyzer-
+#I am using it for reference while crafting the GUI.
 
 import sys
 import cv2
@@ -15,7 +20,7 @@ BLUR_SIZE = 3
 start = time.time()
 
 def count_diff(img1, img2):
-    #Finds a difference between a frame and the frame before it. 
+    #Finds a difference between a frame and the frame before it.
     small1 = cv2.resize(img1, (0,0), fx=SCALE, fy=SCALE)
     small2 = cv2.resize(img2, (0,0), fx=SCALE, fy=SCALE)
     #cv2.imshow('frame', small2)
