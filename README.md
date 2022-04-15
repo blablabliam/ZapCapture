@@ -82,6 +82,7 @@ for stormchasers and tinkerers to use.
 * Quality of Life Features
  * Graphics overhaul for less ugly interface
  * Auto-Threshold button to set the threshold on new videos
+ * Multithreading for faster processing speed
 
 
 
