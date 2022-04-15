@@ -1,6 +1,6 @@
 # Original code developed for Python 2.7 by Saulius Lukse
 # Translated to Python 3 by Liam Plybon (2022)
-# Venv should include OpenCV and Pillow.
+# Venv should include OpenCV, Pyinstaller, and Pillow.
 # Current venv is LightningVenv on home directory.
 __author__ = "Liam Plybon"
 __copyright__ = "Copyright 2022, Liam Plybon"
@@ -18,7 +18,7 @@ from tkinter import ttk
 import sys
 import cv2
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageTk
 import time
 import os
 
@@ -47,6 +47,7 @@ def browse_button_out():
     folder_path_out.set(filename)
     print(filename)
 
+
 def count_diff(img1, img2):
     # Finds a difference between a frame and the frame before it.
     small1 = cv2.resize(img1, (0, 0), fx=SCALE, fy=SCALE)
@@ -61,47 +62,49 @@ def count_diff(img1, img2):
 
     return delta_count1
 
+
 def execute_analysis():
     # Launches analysis of the videos in the in directory.
     # In future, this needs to have error handling.
+    # For now, it is fine without it.
     start = time.time()
     in_folder = folder_path_in.get()
     out_folder = folder_path_out.get()
     threshold = int(thresholdsetpoint.get())
     print(threshold)
     # print(in_folder, out_folder)
-    #set framecount, strike counter to zero before looping all frames
+    # set framecount, strike counter to zero before looping all frames
     frame_count = 0
     strikes = 0
     for filename in os.listdir(in_folder):
-        #itterates over files in directory
-        #f_in and f_out control input and destination targets
+        # itterates over files in directory
+        # f_in and f_out control input and destination targets
         f_in = os.path.join(in_folder, filename)
         f_out = os.path.join(out_folder, filename)
         video = cv2.VideoCapture(f_in)
-        #gets statistics on current video
+        # gets statistics on current video
         nframes = (int)(video.get(cv2.CAP_PROP_FRAME_COUNT))
         width = (int)(video.get(cv2.CAP_PROP_FRAME_WIDTH))
         height = (int)(video.get(cv2.CAP_PROP_FRAME_HEIGHT))
         fps = (int)(video.get(cv2.CAP_PROP_FPS))
-        #video diagnostics printout for user ease.
-        #Might incorporate into visible log at later date
+        # video diagnostics printout for user ease.
+        # Might incorporate into visible log at later date
         print(str(f_in))
         print("[i] Frame size: ", width, height)
         print("[i] Total frames:", nframes)
         print("[i] Fps:", fps)
-        #opens csv for statistics- might want to disable for production.
+        # opens csv for statistics- might want to disable for production.
         fff = open(f_out+".csv", 'w')
-        #reads the video out to give a frame and flag
+        # reads the video out to give a frame and flag
         flag, frame0 = video.read()
         for i in range(nframes-1):
-            #loops through all of the frames, looking for strikes.
+            # loops through all of the frames, looking for strikes.
             flag, frame1 = video.read()
             diff1 = count_diff(frame0, frame1)
             name = f_out+"_%06d.jpg" % i
 
             if diff1 > threshold:
-                #pass condition
+                # pass condition
                 cv2.imwrite(name, frame1)
                 strikes = strikes + 1
 
@@ -113,15 +116,30 @@ def execute_analysis():
             # print text to csv
             fff.write(text + '\n')
             fff.flush()
-            #pass frame forward
+            # pass frame forward
             frame0 = frame1
-    print('analyzed! ' )
+    fff.close()
+    print('[i] Strikes: ', strikes)
+    print('[i] elapsed time:', time.time() - start)
+    print('analyzed! ')
 
 
 # Build window root frame
 root = Tk()
+
+#beautify tkinter a bit
 root.title("Lightning Bolt Analyzer")
-root.geometry('700x250+1000+300')
+root.geometry('700x300+1000+300')
+root.resizable(width=False, height=False)
+
+#add background lightning
+bg = PhotoImage(file = "assets/background.gif")
+background_image=bg
+background_label = Label(root, image=background_image)
+background_label.place(x=0, y=0, relwidth=1, relheight=1)
+
+
+#root.backgroundimage('/home/liam/Documents/GitHub/Lightning-Analyzer-GUI/images/lightning5.jpg')
 # establish grid in root called mainframe
 mainframe = ttk.Frame(root, padding="3 3 12 12")
 mainframe.grid(column=0, row=0)
@@ -131,37 +149,47 @@ root.rowconfigure(0, weight=1)
 # Get the input folder directory.
 # This directory will hold all of the video files to be analyzed.
 folder_path_in = StringVar()
-inputlabel = Label(master=mainframe, textvariable=folder_path_in)
+inputlabel = Label(master=mainframe, textvariable=folder_path_in, font=('Open Sans', 12))
 inputlabel.grid(row=0, column=1)
+inputbuttonimg = PhotoImage(file="assets/button_input-folder.png")
 inputbutton = Button(master=mainframe, text="Input Folder", command=browse_button_in)
+inputbutton.config(image=inputbuttonimg)
 inputbutton.grid(row=0, column=0)
 
 # Get the output folder directory.
 # This directory will hold all of the image frames after analysis.
 folder_path_out = StringVar()
-outputlabel = Label(master=mainframe, textvariable=folder_path_out)
+outputlabel = Label(master=mainframe, textvariable=folder_path_out, font=('Open Sans', 12))
 outputlabel.grid(row=1, column=1)
+outputbuttonimg = PhotoImage(file="assets/button_output-folder.png")
 outputbutton = Button(master=mainframe, text="Output Folder", command=browse_button_out)
+outputbutton.config(image=outputbuttonimg)
 outputbutton.grid(row=1, column=0)
 
 # input for the Threshold.
 # Input can range from 10,000 all the way to 500,000 while giving good results.
+# default threshold will give sparse values, and should be lowered during use.
 thresholdsetpoint = StringVar()
-thresholdsetpoint.set(50000)
-thresholdlabel = Label(master=mainframe, text="Threshold Select")
+thresholdsetpoint.set(500000)
+thresholdlabel = Label(master=mainframe, text="Threshold Select", font=('Open Sans', 12))
 thresholdlabel.grid(row=2, column=0)
-threshold = Entry(master=mainframe, textvariable=thresholdsetpoint)
+threshold = Entry(master=mainframe, textvariable=thresholdsetpoint, font=('Open Sans', 12))
 threshold.grid(row=2, column=1)
 
 # Analyze button
 # This should start the analysis, and give some kind of feedback.
-analysislabel = Label(master=mainframe, text='Perform Analysis?')
+analysislabel = Label(master=mainframe, text='Perform Analysis?', font=('Open Sans', 12))
 analysislabel.grid(row=3, column=0)
+analysisbuttonimg = PhotoImage(file="assets/button_analyze.png")
 analysisbutton = Button(master=mainframe,
                         text='Analyze!',
-                        command=execute_analysis,
-                        bg='green')
+                        command=execute_analysis)
+analysisbutton.config(image=analysisbuttonimg)
 analysisbutton.grid(row=3, column=1)
+
+#root.mainloop()
+
+
 
 # Progress Bar
 # A progress bar can be installed here, although since that requires multithreading
@@ -175,17 +203,21 @@ analysisprogress.grid(row=1, column=0)
 
 # Instructions Text Box
 # This sits below the mainframe, and gives instructions on running the software.
-instructions = '''Instructions to be filled in on later date.
+instructions = '''Select an input folder with lightning videos, then select a
+folder to output the image results. The default threshold of 500,000 is
+agressive; if you don't get many images after processing, reduce the threshold
+by factors of 10 until you do. Clicking 'Analyze!' will start the process. You
+can watch the files in real time in your output folder to verify that the
+script is running.
 https://blablabliam.github.io'''
-instructionbox = Label(master=root, text=instructions)
+instructionbox = Label(master=root, text=instructions, font=('Open Sans', 10))
 instructionbox.grid(row=2, column=0)
 
 # establish mainframe padding between children
-for child in mainframe.winfo_children():
-    child.grid_configure(padx=5, pady=5)
+# for child in mainframe.winfo_children():
+#     child.grid_configure(padx=5, pady=5)
 
 inputlabel.focus()
-# root.bind("<Return>", calculate)
 
 # executes the main window.
 root.mainloop()
