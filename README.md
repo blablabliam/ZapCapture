@@ -144,7 +144,7 @@ Distributed under the MIT License. See `LICENSE` for more information.
 
 Liam Plybon - lplybon1@gmail.com
 
-Project Link: [https://github.com/blablabliam/Lightning-Analyzer](https://github.com/blablabliam/Lightning-Analyzer)
+Project Link: [https://github.com/blablabliam/Lightning-Analyzer-GUI](https://github.com/blablabliam/Lightning-Analyzer-GUI)
 
 Like it enough to spend money? Don't feel pressured.
 
@@ -159,13 +159,13 @@ Like it enough to spend money? Don't feel pressured.
 
 <!-- MARKDOWN LINKS & IMAGES -->
 <!-- https://www.markdownguide.org/basic-syntax/#reference-style-links -->
-[contributors-shield]: https://img.shields.io/github/contributors/blablabliam/Lightning-Analyzer.svg?style=for-the-badge
-[contributors-url]: https://github.com/blablabliam/Lightning-Analyzer/graphs/contributors
-[forks-shield]: https://img.shields.io/github/forks/blablabliam/Lightning-Analyzer.svg?style=for-the-badge
-[forks-url]: https://github.com/blablabliam/Lightning-Analyzer/network/members
-[stars-shield]: https://img.shields.io/github/stars/blablabliam/Lightning-Analyzer.svg?style=for-the-badge
-[stars-url]: https://github.com/blablabliam/Lightning-Analyzer/stargazers
-[issues-shield]: https://img.shields.io/github/issues/blablabliam/Lightning-Analyzer.svg?style=for-the-badge
-[issues-url]: https://github.com/blablabliam/Lightning-Analyzer/issues
-[license-shield]: https://img.shields.io/github/license/blablabliam/Lightning-Analyzer.svg?style=for-the-badge
-[license-url]: https://github.com/blablabliam/Lightning-Analyzer/blob/master/LICENSE.txt
+[contributors-shield]: https://img.shields.io/github/contributors/blablabliam/Lightning-Analyzer-GUI.svg?style=for-the-badge
+[contributors-url]: https://github.com/blablabliam/Lightning-Analyzer-GUI/graphs/contributors
+[forks-shield]: https://img.shields.io/github/forks/blablabliam/Lightning-Analyzer-GUI.svg?style=for-the-badge
+[forks-url]: https://github.com/blablabliam/Lightning-Analyzer-GUI/network/members
+[stars-shield]: https://img.shields.io/github/stars/blablabliam/Lightning-Analyzer-GUI.svg?style=for-the-badge
+[stars-url]: https://github.com/blablabliam/Lightning-Analyzer-GUI/stargazers
+[issues-shield]: https://img.shields.io/github/issues/blablabliam/Lightning-Analyzer-GUI.svg?style=for-the-badge
+[issues-url]: https://github.com/blablabliam/Lightning-Analyzer-GUI/issues
+[license-shield]: https://img.shields.io/github/license/blablabliam/Lightning-Analyzer-GUI.svg?style=for-the-badge
+[license-url]: https://github.com/blablabliam/Lightning-Analyzer-GUI/blob/master/LICENSE.txt
