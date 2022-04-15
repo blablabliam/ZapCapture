@@ -88,9 +88,10 @@ for stormchasers and tinkerers to use.
 
 Currently, the program takes a folder full of videos and uses OpenCV to detect differences between frames. If the difference exceeds a user-defined threshold, then the image is saved as a jpg. You can tune the threshold to suit your individual video; on a ten minute video, this program can extract less than a hundred frames or several thousand, depending on the threshold.
 
-<a href="images/LightningAnalyzerGUI.png">
+<p align="center">
   <img src="images/LightningAnalyzerGUI.png" alt="GUI design">
-</a>
+</p>
+
 
 <!-- USING THE SOFTWARE -->
 ## Instructions
