@@ -6,10 +6,10 @@ __author__ = "Liam Plybon"
 __copyright__ = "Copyright 2022, Liam Plybon"
 __credits__ = ["Saulius Lukse", "Drake Anthony (Styropyro)"]
 __license__ = "MIT"
-__version__ = "0"
+__version__ = "1"
 __maintainer__ = "Liam Plybon"
 __email__ = "lplybon1@gmail.com"
-__status__ = "In Development"
+__status__ = "Production"
 __date__ = "4-14-2022"
 
 from tkinter import *
@@ -108,10 +108,6 @@ def execute_analysis():
                 cv2.imwrite(name, frame1)
                 strikes = strikes + 1
 
-                #small = cv2.resize(frame1, (0,0), fx=SCALE, fy=SCALE)
-                #cv2.imshow('frame', small)
-                # cv2.waitKey(1)
-
             text = str(f_out)+', '+str(diff1)
             # print text to csv
             fff.write(text + '\n')
@@ -119,6 +115,7 @@ def execute_analysis():
             # pass frame forward
             frame0 = frame1
     fff.close()
+    #statistics
     print('[i] Strikes: ', strikes)
     print('[i] elapsed time:', time.time() - start)
     print('analyzed! ')
@@ -127,19 +124,17 @@ def execute_analysis():
 # Build window root frame
 root = Tk()
 
-#beautify tkinter a bit
+# beautify tkinter a bit
 root.title("Lightning Bolt Analyzer")
 root.geometry('700x300+1000+300')
 root.resizable(width=False, height=False)
 
-#add background lightning
-bg = PhotoImage(file = "assets/background.gif")
-background_image=bg
+# add background lightning - kinda ugly but works for now
+bg = PhotoImage(file="assets/background.gif")
+background_image = bg
 background_label = Label(root, image=background_image)
 background_label.place(x=0, y=0, relwidth=1, relheight=1)
 
-
-#root.backgroundimage('/home/liam/Documents/GitHub/Lightning-Analyzer-GUI/images/lightning5.jpg')
 # establish grid in root called mainframe
 mainframe = ttk.Frame(root, padding="3 3 12 12")
 mainframe.grid(column=0, row=0)
@@ -186,10 +181,6 @@ analysisbutton = Button(master=mainframe,
                         command=execute_analysis)
 analysisbutton.config(image=analysisbuttonimg)
 analysisbutton.grid(row=3, column=1)
-
-#root.mainloop()
-
-
 
 # Progress Bar
 # A progress bar can be installed here, although since that requires multithreading
