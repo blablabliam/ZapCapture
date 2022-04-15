@@ -31,8 +31,6 @@
   </p>
 </p>
 
-
-
 <!-- TABLE OF CONTENTS -->
 <details open="open">
   <summary><h2 style="display: inline-block">Table of Contents</h2></summary>
@@ -41,6 +39,7 @@
       <a href="#about-the-project">About The Project</a>
       <ul>
         <li><a href="#built-with">Built With</a></li>
+        <li><a href='#roadmap'>Roadmap</a></li>
       </ul>
     </li>
     <li><a href="#design">Design</a></li>
@@ -51,31 +50,28 @@
   </ol>
 </details>
 
-
-
 <!-- ABOUT THE PROJECT -->
 ## About The Project
 
 Sometimes I like to set up my camera during storms, but watching hours of footage after a lightning storm is time consuming and not very fun. I went to find an existing script to perform this task, and found one written in Python 2 by programmer and mad scientist [Saulius Lukse](https://lukse.lt/uzrasai/2015-05-lightning-strikes-and-python/). I converted the handy script to Python 3, and fit the whole thing into a Jupyter notebook for easy access. After showing off my
 cool result pictures, people expressed serious interest in running the software
-themselves. This will wrap the project in a handsome GUI and make it easy enough
+themselves. This wraps the project in a 'handsome' GUI and make it easy enough
 for stormchasers and tinkerers to use.
 
 ### Built With
 
-* [Python 3.8.13](https://www.python.org/)
-* [Anaconda](https://www.anaconda.com/)
+* [Python](https://www.python.org/)
 * [OpenCV](https://opencv.org/)
 * [Pillow](https://pillow.readthedocs.io/en/stable/)
 * [Tkinter](https://docs.python.org/3/library/tkinter.html)
-
+* [Atom](https://atom.io/)
 
 <!--Project Roadmap -->
 ## Roadmap
 #### V0 ✔️ (See Independent Repository)
 * Implement a working script in a Jupyter Notebook.
 
-#### V1
+#### V1 ✔️
 * Implement a working GUI that is OS independent.
 
 #### V2
@@ -83,28 +79,54 @@ for stormchasers and tinkerers to use.
  * Graphics overhaul for less ugly interface
  * Auto-Threshold button to set the threshold on new videos
  * Multithreading for faster processing speed
+ * Error handling to give feedback during analysis
 
 
 
 <!-- DESIGN DESCRIPTION -->
 ## Design
 
-Currently, the notebook takes a video and uses OpenCV to extract frames and detect a difference between frames. If the difference exceeds the threshold, then the image passes and is saved as a jpg. You can tune the threshold to suit your individual video; on a ten minute video, this program can extract less than a hundred frames or several thousand, depending on the threshold.
-
-Future design should be a standalone program, so that stormchasers don't have to wrangle with software as much.
+Currently, the program takes a folder full of videos and uses OpenCV to detect differences between frames. If the difference exceeds a user-defined threshold, then the image is saved as a jpg. You can tune the threshold to suit your individual video; on a ten minute video, this program can extract less than a hundred frames or several thousand, depending on the threshold.
 
 <!-- USING THE SOFTWARE -->
 ## Instructions
 
-First, create a new environment in Anaconda and activate it. Install libopencv, opencv, py-opencv, and pillow to the new environment.
+#### Windows 10
 
-Next, create a folder with a lightning video inside; this folder will be filled with images by the lightning frame extractor.
+Download the assets folder and LightningGUI.exe, and store them in the same place. Simply run the exe from there!
 
-Then, open the lightning extractor notebook. Set the filename to match your lightning video filename; on Linux,
+#### Linux
 
-```filename = '/home/user/Videos/Camera/lightning.mp4'```
+Download the assets folder and LightningGUI file, and store them in the same place. You can run the file from command line with
 
-Finally, set an appropriate threshold for your video. On the example video, the optimum threshold is around 500,000; the higher the threshold, the faster the process will run and the less output images you will get. You will have to experiment to find the best threshold, but starting high and going lower is the best approach. Once the threshold is set, run the notebook and wait a bit. The program will take a few minutes to run.
+`$ ./LightningGUI`
+
+#### Processing
+
+Use the input and output folder buttons to select a folder with lightning videos and an empty folder. Then, set an appropriate threshold for your videos. On the example video, the optimum threshold is around 500,000; the higher the threshold, the faster the process will run and the less output images you will get. You will have to experiment to find the best threshold, but starting high and going lower is the best approach. Once the threshold is set, click 'Analyze!' wait a bit. The program will take a few minutes to run.
+
+#### Building
+
+Interested in building LightningGUI on your operating system? To build LightningGUI, you need to have Python 3.6 or later. Then, create a virtual environment.
+
+`$ python -m venv LightningVenv`
+
+`$ cd LightningVenv/Scripts`
+
+`$ activate`
+
+Then, use pip to install pillow, opencv, and pyinstaller.
+
+`(LightningVenv)$ pip install pillow opencv-python pyinstaller`
+
+Finally, use pyinstaller to make the file yourself.
+
+`(LightningVenv)$ cd Downloads/Lightning-Analyzer-GUI `
+
+`(LightningVenv)$ pyinstaller LightningGUI.py --onefile --icon logo.ico`
+
+Move the `LightningGUI` file out of the `dist` folder and into to `Lightning-Analyzer-GUI` folder to run it.
+
 
 <!-- LICENSE -->
 ## License
@@ -119,15 +141,15 @@ Liam Plybon - lplybon1@gmail.com
 
 Project Link: [https://github.com/blablabliam/Lightning-Analyzer](https://github.com/blablabliam/Lightning-Analyzer)
 
+Like it enough to spend money? Don't feel pressured.
+
+<a href="https://www.buymeacoffee.com/Blablabliam" target="_blank"><img src="https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png" alt="Buy Me A Hammer" style="height: 41px !important;width: 174px !important;box-shadow: 0px 3px 2px 0px rgba(190, 190, 190, 0.5) !important;-webkit-box-shadow: 0px 3px 2px 0px rgba(190, 190, 190, 0.5) !important;" ></a>
 
 
 <!-- ACKNOWLEDGEMENTS -->
 ## Acknowledgments
 
 * [Saulius Lukse](https://lukse.lt/uzrasai/2015-05-lightning-strikes-and-python/)
-
-
-
 
 
 <!-- MARKDOWN LINKS & IMAGES -->
