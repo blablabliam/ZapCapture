@@ -69,13 +69,14 @@ for stormchasers and tinkerers to use.
 <!--Project Roadmap -->
 ## Roadmap
 #### V0 ✔️ (See Independent Repository)
-* Implement a working script in a Jupyter Notebook.
+* Implement a working script in a Jupyter Notebook. ✔️
 
 #### V1 ✔️
-* Implement a working GUI that is OS independent.
+* Implement a working GUI that is OS independent. ✔️
 
 #### V2
 * Quality of Life Features
+ * requirements.txt ✔️
  * Graphics overhaul for less ugly interface
  * Auto-Threshold button to set the threshold on new videos
  * Multithreading for faster processing speed
@@ -98,7 +99,8 @@ Currently, the program takes a folder full of videos and uses OpenCV to detect d
 
 #### Windows 10
 
-Download the assets folder and LightningGUI.exe, and store them in the same place. Simply run the exe from there!
+Download the assets folder and LightningGUI.exe, and store them in the same place. Simply run the .exe from there! The .exe was never meant to be a long-term
+solution, but simply a minimum viable test tool for some of my friends.
 
 #### Linux
 
@@ -112,23 +114,16 @@ Use the input and output folder buttons to select a folder with lightning videos
 
 #### Building
 
-Interested in building LightningGUI on your operating system? To build LightningGUI, you need to have Python 3.6 or later. Then, create a virtual environment.
+Interested in building LightningGUI on your operating system? To build LightningGUI, you need to have Python 3.6 or later. Then, use pip to install the
+requirements.txt file.
 
-`$ python -m venv LightningVenv`
-
-`$ cd LightningVenv/Scripts`
-
-`$ activate`
-
-Then, use pip to install pillow, opencv, and pyinstaller.
-
-`(LightningVenv)$ pip install pillow opencv-python pyinstaller`
+`$ python -m pip install -r requirements.txt`
 
 Finally, use pyinstaller to make the file yourself.
 
-`(LightningVenv)$ cd Downloads/Lightning-Analyzer-GUI `
+`$ cd Downloads/Lightning-Analyzer-GUI `
 
-`(LightningVenv)$ pyinstaller LightningGUI.py --onefile --icon logo.ico`
+`$ pyinstaller LightningGUI.py --onefile --icon logo.ico`
 
 Move the `LightningGUI` file out of the `dist` folder and into to `Lightning-Analyzer-GUI` folder to run it.
 

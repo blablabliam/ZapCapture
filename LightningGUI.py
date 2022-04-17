@@ -1,7 +1,6 @@
 # Original code developed for Python 2.7 by Saulius Lukse
 # Translated to Python 3 by Liam Plybon (2022)
-# Venv should include OpenCV, Pyinstaller, and Pillow.
-# Current venv is LightningVenv on home directory.
+
 __author__ = "Liam Plybon"
 __copyright__ = "Copyright 2022, Liam Plybon"
 __credits__ = ["Saulius Lukse", "Drake Anthony (Styropyro)"]
