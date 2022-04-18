@@ -1,8 +1,9 @@
 altgraph==0.17.2
 numpy==1.22.3
-opencv-python==4.5.5.64
+opencv-python-headless==4.5.5.64
 Pillow==9.1.0
 pyinstaller==4.10
 pyinstaller-hooks-contrib==2022.3
-tk==0.1.0
+PySide2==5.15.2.1
+shiboken2==5.15.2.1
 tqdm==4.64.0

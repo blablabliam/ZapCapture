@@ -77,7 +77,7 @@ for stormchasers and tinkerers to use.
 #### V2
 * Quality of Life Features
  * requirements.txt ✔️
- * Graphics overhaul for less ugly interface
+ * Graphics overhaul for less ugly interface ✔️
  * Auto-Threshold button to set the threshold on new videos
  * Multithreading for faster processing speed
  * Error handling to give feedback during analysis
@@ -92,6 +92,7 @@ Currently, the program takes a folder full of videos and uses OpenCV to detect d
 <p align="center">
   <img src="images/LightningAnalyzerGUI.png" alt="GUI design">
 </p>
+
 
 
 <!-- USING THE SOFTWARE -->
