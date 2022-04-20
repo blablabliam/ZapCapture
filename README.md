@@ -80,8 +80,7 @@ for stormchasers and tinkerers to use.
  * Graphics overhaul for less ugly interface ✔️
  * Multithreading for faster processing speed ✔️
  * Progress bar ✔️
- * Auto-Threshold button to set the threshold on new videos
- * Error handling to give feedback during analysis
+ * Error handling to give feedback during analysis ✔️
  * Signed files for security
 
 

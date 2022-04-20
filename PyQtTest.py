@@ -12,6 +12,7 @@ import sys
 import time
 import os
 from PIL import Image, ImageTk
+import cv2
 
 # imports for gui interface
 from PySide2.QtCore import Qt, QObject, QThread, Signal, Slot
@@ -24,16 +25,15 @@ from PySide2.QtWidgets import (
     QWidget,
     QFileDialog,
     QLineEdit,
-    QProgressBar
+    QProgressBar,
+    QMessageBox
 )
-# imports for Dark Mode theme
 from PySide2.QtGui import (
     QPalette,
     QColor,
-    QIntValidator
+    QIntValidator,
+    QIcon
 )
-
-import cv2
 
 #global variable
 SCALE = 0.5
@@ -64,6 +64,24 @@ def count_diff(img1, img2):
     return delta_count1
 
 
+def error_popup(message):
+    msg = QMessageBox()
+    msg.setIcon(QMessageBox.Warning)
+    msg.setText("Error")
+    msg.setInformativeText(str(message))
+    msg.setWindowTitle("Lightning Analysis Error")
+    msg.exec_()
+
+
+def info_popup(message):
+    msg = QMessageBox()
+    msg.setIcon(QMessageBox.Warning)
+    msg.setText("Info")
+    msg.setInformativeText(str(message))
+    msg.setWindowTitle("Lightning Analysis Complete")
+    msg.exec_()
+
+
 class Worker(QObject):
     # worker thread for the analysis.
     finished = Signal()
@@ -73,7 +91,6 @@ class Worker(QObject):
 
     def run(self):
         """Long-running task."""
-        print('worker.run')
         # Launches analysis of the videos in the in directory.
         # In future, this needs to have error handling.
         # For now, it is fine without it.
@@ -88,9 +105,24 @@ class Worker(QObject):
         frame_count = 0
         strikes = 0
         self.threadProgress.emit(10)
-        #counts number of files in folder for progress bar
-        path, dirs, files = next(os.walk(in_folder))
-        filecount = len(files)
+        try:
+            # error if the folder is invalid. Check folder for verification.
+            path, dirs, files = next(os.walk(in_folder))
+            filecount = len(files)
+        except:
+            error_popup('Input folder not valid. Select a valid folder.')
+            self.threadProgress.emit(0)
+            self.finished.emit()
+            return
+        try:
+            # determine if the output folder is valid
+            path, dirs, files = next(os.walk(out_folder))
+            filecount = len(files)
+        except:
+            error_popup('Output folder not valid. Select a valid folder.')
+            self.threadProgress.emit(0)
+            self.finished.emit()
+            return
         for index, filename in enumerate(os.listdir(in_folder)):
             # itterates over files in directory
             # f_in and f_out control input and destination targets
@@ -106,10 +138,12 @@ class Worker(QObject):
             fps = (int)(video.get(cv2.CAP_PROP_FPS))
             # video diagnostics printout for user ease.
             # Might incorporate into visible log at later date
-            print(str(f_in))
-            print("[i] Frame size: ", width, height)
-            print("[i] Total frames:", nframes)
-            print("[i] Fps:", fps)
+            frame_size = "Frame size: " + str(width) + str(height) + '\n'
+            total_frames = "Total frames: " + str(nframes) + '\n'
+            video_fps = "Fps: " + str(fps) + '\n'
+            print(frame_size)
+            print(total_frames)
+            print(video_fps)
             # opens csv for statistics- might want to disable for production.
             fff = open(f_out+".csv", 'w')
             # reads the video out to give a frame and flag
@@ -133,10 +167,14 @@ class Worker(QObject):
                 frame0 = frame1
         fff.close()
         # statistics
-        print('[i] Strikes: ', strikes)
-        print('[i] elapsed time:', time.time() - start)
+        video_strikes = 'Strikes: '+ str(strikes) + '\n'
+        elapsed_time = 'elapsed time: ' + str(time.time() - start) + '\n'
+        print(video_strikes)
+        print(elapsed_time)
         print('analyzed! ')
-        #sends finished signal. Essentially terminates the thread.
+        info = videostrikes + elapsed_time
+        #info_popup(info)
+        # sends finished signal. Essentially terminates the thread.
         self.threadProgress.emit(100)
         self.finished.emit()
 
@@ -146,10 +184,11 @@ class Window(QMainWindow):
         super().__init__(parent)
         self.clicksCount = 0
         self.setupUi()
+        # self.setIcon()
 
     def setupUi(self):
         # sets up the gui layout itself
-        self.setWindowTitle("Freezing GUI")
+        self.setWindowTitle("Lightning Analysis")
         self.resize(300, 150)
         self.centralWidget = QWidget()
         self.setCentralWidget(self.centralWidget)
@@ -194,6 +233,9 @@ class Window(QMainWindow):
         global input_folder
         input_folder = str(folder_path)
         self.inputFileDirectoryLabel.setText(str(folder_path))
+        #reset the progress bar to 0
+        self.progressBar.setValue(0)
+        self.analysisButton.setEnabled(True)
 
     def pick_new_output(self):
         dialog = QFileDialog()
@@ -201,6 +243,9 @@ class Window(QMainWindow):
         global output_folder
         output_folder = str(folder_path)
         self.outputFileDirectoryLabel.setText(str(folder_path))
+        #reset the progress bar to 0
+        self.progressBar.setValue(0)
+        self.analysisButton.setEnabled(True)
 
     def runLongTask(self):
         # set the threshold
@@ -226,18 +271,18 @@ class Window(QMainWindow):
 
         # Final resets
         self.analysisButton.setEnabled(False)
-        print('asdf')
-        self.thread.finished.connect(
-            lambda: self.analysisButton.setEnabled(True)
-        )
-        print('asdf')
+        #self.thread.finished.connect(self.enableAnalysisButton)
+        # self.thread.finished.connect(
+        #     lambda: self.analysisButton.setEnabled(True)
+        # )
 
     def onCountChanged(self, value):
         self.progressBar.setValue(value)
 
-def app_close():
-    # function describing app close condition
-    return True
+    def enableAnalysisButton(self):
+        self.analysisButton.setEnabled(True)
+
+
 
 
 app = QApplication(sys.argv)
