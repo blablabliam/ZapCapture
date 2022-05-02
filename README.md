@@ -81,6 +81,7 @@ for stormchasers and tinkerers to use.
  * Multithreading for faster processing speed ✔️
  * Progress bar ✔️
  * Error handling to give feedback during analysis ✔️
+ * Saved file frame/timestamp option
  * Signed files for security
 
 

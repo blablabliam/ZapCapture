@@ -1,4 +1,4 @@
-__author__ = "Liam Plybon"
+__author__ = "Liam Plybon (blablabliam.github.io)"
 __copyright__ = "Copyright 2022, Liam Plybon"
 __credits__ = ["Saulius Lukse", "Drake Anthony (Styropyro)"]
 __license__ = "MIT"
@@ -6,7 +6,7 @@ __version__ = "2"
 __maintainer__ = "Liam Plybon"
 __email__ = "lplybon1@gmail.com"
 __status__ = "Prototype"
-__date__ = "4-17-2022"
+__date__ = "5-2-2022"
 
 import sys
 import time
@@ -35,7 +35,7 @@ from PySide2.QtGui import (
     QIcon
 )
 
-#global variable
+#global variables
 SCALE = 0.5
 NOISE_CUTOFF = 5
 BLUR_SIZE = 3
@@ -70,23 +70,25 @@ def error_popup(message):
     msg.setText("Error")
     msg.setInformativeText(str(message))
     msg.setWindowTitle("Lightning Analysis Error")
+    #prevents crash after closing message box
+    msg.setAttribute(Qt.WA_DeleteOnClose)
     msg.exec_()
 
 
 def info_popup(message):
     msg = QMessageBox()
-    msg.setIcon(QMessageBox.Warning)
-    msg.setText("Info")
+    msg.setIcon(QMessageBox.Information)
+    msg.setText("Analysis Complete!")
     msg.setInformativeText(str(message))
     msg.setWindowTitle("Lightning Analysis Complete")
+    #prevents crash after closing message box
+    msg.setAttribute(Qt.WA_DeleteOnClose)
     msg.exec_()
 
 
 class Worker(QObject):
     # worker thread for the analysis.
     finished = Signal()
-    #progress = Signal(int)
-    #input = Signal()
     threadProgress = Signal(int)
 
     def run(self):
@@ -141,9 +143,9 @@ class Worker(QObject):
             frame_size = "Frame size: " + str(width) + str(height) + '\n'
             total_frames = "Total frames: " + str(nframes) + '\n'
             video_fps = "Fps: " + str(fps) + '\n'
-            print(frame_size)
-            print(total_frames)
-            print(video_fps)
+            #print(frame_size)
+            #print(total_frames)
+            #print(video_fps)
             # opens csv for statistics- might want to disable for production.
             fff = open(f_out+".csv", 'w')
             # reads the video out to give a frame and flag
@@ -168,13 +170,12 @@ class Worker(QObject):
         fff.close()
         # statistics
         video_strikes = 'Strikes: '+ str(strikes) + '\n'
-        elapsed_time = 'elapsed time: ' + str(time.time() - start) + '\n'
-        print(video_strikes)
-        print(elapsed_time)
-        print('analyzed! ')
-        info = videostrikes + elapsed_time
-        #info_popup(info)
-        # sends finished signal. Essentially terminates the thread.
+        elapsed_time = 'Process Time: ' + str(int(time.time() - start)) + ' s\n'
+        #print(video_strikes)
+        #print(elapsed_time)
+        info = video_strikes+elapsed_time
+        info_popup(info)
+        #sends finished signal. Essentially terminates the thread.
         self.threadProgress.emit(100)
         self.finished.emit()
 
@@ -182,7 +183,7 @@ class Worker(QObject):
 class Window(QMainWindow):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.clicksCount = 0
+        #self.clicksCount = 0
         self.setupUi()
         # self.setIcon()
 
@@ -201,8 +202,9 @@ class Window(QMainWindow):
         self.outputFileDirectoryButton.clicked.connect(self.pick_new_output)
         self.outputFileDirectoryLabel = QLabel(output_folder)
         self.outputFileDirectoryLabel.setAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
-        self.thresholdLabel = QLabel("Threshold: ", self)
+        self.thresholdLabel = QLabel("Threshold (❓)", self)
         self.thresholdLabel.setAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
+        self.thresholdLabel.setToolTip('Threshold determines the sensitivity of the computer vision algorithm. High thresholds will execute quickly with few output images, while low thresholds will potentially detect every frame of the video as a lightning event. Each video in your folder may need an individually tuned threshold; in this case, make subfolders for videos from the same camera and event. For example, separate your dash-cam footage and stationary camera footage.')
         self.thresholdEntry = QLineEdit(threshold)
         # restricts the threshold to be numbers only
         self.onlyInt = QIntValidator()
@@ -267,11 +269,10 @@ class Window(QMainWindow):
         # self.worker.progress.connect(self.reportProgress)
         # Step 6: Start the thread
         self.thread.start()
-        print('asdf')
 
         # Final resets
         self.analysisButton.setEnabled(False)
-        #self.thread.finished.connect(self.enableAnalysisButton)
+        self.thread.finished.connect(self.enableAnalysisButton)
         # self.thread.finished.connect(
         #     lambda: self.analysisButton.setEnabled(True)
         # )
