@@ -1,58 +1,64 @@
-# Original code developed for Python 2.7 by Saulius Lukse
-# Translated to Python 3 by Liam Plybon (2022)
-
-__author__ = "Liam Plybon"
+__author__ = "Liam Plybon (blablabliam.github.io)"
 __copyright__ = "Copyright 2022, Liam Plybon"
 __credits__ = ["Saulius Lukse", "Drake Anthony (Styropyro)"]
 __license__ = "MIT"
-__version__ = "1"
+__version__ = "2"
 __maintainer__ = "Liam Plybon"
 __email__ = "lplybon1@gmail.com"
-__status__ = "Production"
-__date__ = "4-14-2022"
+__status__ = "Prototype"
+__date__ = "5-2-2022"
 
-from tkinter import *
-from tkinter import filedialog
-from tkinter import ttk
 import sys
-import cv2
-import numpy as np
-from PIL import Image, ImageTk
 import time
 import os
+from PIL import Image, ImageTk
+import cv2
 
-# hardcoded values for  computer vision
+# imports for gui interface
+from PySide2.QtCore import Qt, QObject, QThread, Signal, Slot
+from PySide2.QtWidgets import (
+    QApplication,
+    QLabel,
+    QMainWindow,
+    QPushButton,
+    QRadioButton,
+    QVBoxLayout,
+    QWidget,
+    QFileDialog,
+    QLineEdit,
+    QProgressBar,
+    QMessageBox
+)
+from PySide2.QtGui import (
+    QPalette,
+    QColor,
+    QIntValidator,
+    QIcon
+)
+
+#global variables
 SCALE = 0.5
 NOISE_CUTOFF = 5
 BLUR_SIZE = 3
-
-
-def browse_button_in():
-    # Allow user to select a directory and store it in global var
-    # called folder_path_in
-    # This function is called by the input directory button.
-    global folder_path_in
-    filename = filedialog.askdirectory()
-    folder_path_in.set(filename)
-    print(filename)
-
-
-def browse_button_out():
-    # Allow user to select a directory and store it in global var
-    # called folder_path_out
-    # This function is called by the output directory button.
-    global folder_path_out
-    filename = filedialog.askdirectory()
-    folder_path_out.set(filename)
-    print(filename)
+# input, output, and threshold are manipulated by the directory select buttons
+# this allows them to pass into the worker thread without slots and signals.
+# as such they are used as global variables
+# for clarity, all globals are redefined as global wherever used.
+global input_folder
+input_folder = 'No Folder Chosen'
+global output_folder
+output_folder = 'No Folder Chosen'
+global threshold
+threshold = '5000000'
+#buttonstate determines output file name type.
+global buttonState
+buttonState = True
 
 
 def count_diff(img1, img2):
     # Finds a difference between a frame and the frame before it.
     small1 = cv2.resize(img1, (0, 0), fx=SCALE, fy=SCALE)
     small2 = cv2.resize(img2, (0, 0), fx=SCALE, fy=SCALE)
-    #cv2.imshow('frame', small2)
-    # cv2.waitKey(1)
     diff = cv2.absdiff(small1, small2)
     diff = cv2.cvtColor(diff, cv2.COLOR_RGB2GRAY)
     frame_delta1 = cv2.threshold(diff, NOISE_CUTOFF, 255, 3)[1]
@@ -62,152 +68,287 @@ def count_diff(img1, img2):
     return delta_count1
 
 
-def execute_analysis():
-    # Launches analysis of the videos in the in directory.
-    # In future, this needs to have error handling.
-    # For now, it is fine without it.
-    start = time.time()
-    in_folder = folder_path_in.get()
-    out_folder = folder_path_out.get()
-    threshold = int(thresholdsetpoint.get())
-    print(threshold)
-    # print(in_folder, out_folder)
-    # set framecount, strike counter to zero before looping all frames
-    frame_count = 0
-    strikes = 0
-    for filename in os.listdir(in_folder):
-        # itterates over files in directory
-        # f_in and f_out control input and destination targets
-        f_in = os.path.join(in_folder, filename)
-        f_out = os.path.join(out_folder, filename)
-        video = cv2.VideoCapture(f_in)
-        # gets statistics on current video
-        nframes = (int)(video.get(cv2.CAP_PROP_FRAME_COUNT))
-        width = (int)(video.get(cv2.CAP_PROP_FRAME_WIDTH))
-        height = (int)(video.get(cv2.CAP_PROP_FRAME_HEIGHT))
-        fps = (int)(video.get(cv2.CAP_PROP_FPS))
-        # video diagnostics printout for user ease.
-        # Might incorporate into visible log at later date
-        print(str(f_in))
-        print("[i] Frame size: ", width, height)
-        print("[i] Total frames:", nframes)
-        print("[i] Fps:", fps)
-        # opens csv for statistics- might want to disable for production.
-        fff = open(f_out+".csv", 'w')
-        # reads the video out to give a frame and flag
-        flag, frame0 = video.read()
-        for i in range(nframes-1):
-            # loops through all of the frames, looking for strikes.
-            flag, frame1 = video.read()
-            diff1 = count_diff(frame0, frame1)
-            name = f_out+"_%06d.jpg" % i
-
-            if diff1 > threshold:
-                # pass condition
-                cv2.imwrite(name, frame1)
-                strikes = strikes + 1
-
-            text = str(f_out)+', '+str(diff1)
-            # print text to csv
-            fff.write(text + '\n')
-            fff.flush()
-            # pass frame forward
-            frame0 = frame1
-    fff.close()
-    #statistics
-    print('[i] Strikes: ', strikes)
-    print('[i] elapsed time:', time.time() - start)
-    print('analyzed! ')
+def error_popup(message):
+    msg = QMessageBox()
+    msg.setIcon(QMessageBox.Warning)
+    msg.setText("Error")
+    msg.setInformativeText(str(message))
+    msg.setWindowTitle("Lightning Analysis Error")
+    #prevents crash after closing message box
+    msg.setAttribute(Qt.WA_DeleteOnClose)
+    msg.exec_()
 
 
-# Build window root frame
-root = Tk()
+def info_popup(message):
+    msg = QMessageBox()
+    msg.setIcon(QMessageBox.Information)
+    msg.setText("Analysis Complete!")
+    msg.setInformativeText(str(message))
+    msg.setWindowTitle("Lightning Analysis Complete")
+    #prevents crash after closing message box
+    msg.setAttribute(Qt.WA_DeleteOnClose)
+    msg.exec_()
 
-# beautify tkinter a bit
-root.title("Lightning Bolt Analyzer")
-root.geometry('700x300+1000+300')
-root.resizable(width=False, height=False)
 
-# add background lightning - kinda ugly but works for now
-bg = PhotoImage(file="assets/background.gif")
-background_image = bg
-background_label = Label(root, image=background_image)
-background_label.place(x=0, y=0, relwidth=1, relheight=1)
+class Worker(QObject):
+    # worker thread for the analysis.
+    finished = Signal()
+    threadProgress = Signal(int)
 
-# establish grid in root called mainframe
-mainframe = ttk.Frame(root, padding="3 3 12 12")
-mainframe.grid(column=0, row=0)
-root.columnconfigure(0, weight=1)
-root.rowconfigure(0, weight=1)
+    def run(self):
+        """Long-running task."""
+        # Launches analysis of the videos in the in directory.
+        # In future, this needs to have error handling.
+        # For now, it is fine without it.
+        global input_folder
+        global output_folder
+        global threshold
+        global buttonState
+        in_folder = input_folder
+        out_folder = output_folder
+        threshold_integer = int(threshold)
+        start = time.time()
+        # set framecount, strike counter to zero before looping all frames
+        frame_count = 0
+        strikes = 0
+        self.threadProgress.emit(10)
+        try:
+            # error if the folder is invalid. Check folder for verification.
+            path, dirs, files = next(os.walk(in_folder))
+            filecount = len(files)
+        except:
+            error_popup('Input folder not valid. Select a valid folder.')
+            self.threadProgress.emit(0)
+            self.finished.emit()
+            return
+        try:
+            # determine if the output folder is valid
+            path, dirs, files = next(os.walk(out_folder))
+            filecount = len(files)
+        except:
+            error_popup('Output folder not valid. Select a valid folder.')
+            self.threadProgress.emit(0)
+            self.finished.emit()
+            return
+        for index, filename in enumerate(os.listdir(in_folder)):
+            # itterates over files in directory
+            # f_in and f_out control input and destination targets
+            completion = 10+(90*((index+1)/filecount))
+            self.threadProgress.emit(completion)
+            f_in = os.path.join(in_folder, filename)
+            f_out = os.path.join(out_folder, filename)
+            video = cv2.VideoCapture(f_in)
+            # gets statistics on current video
+            nframes = (int)(video.get(cv2.CAP_PROP_FRAME_COUNT))
+            width = (int)(video.get(cv2.CAP_PROP_FRAME_WIDTH))
+            height = (int)(video.get(cv2.CAP_PROP_FRAME_HEIGHT))
+            fps = (int)(video.get(cv2.CAP_PROP_FPS))
+            #print('FPS is '+ str(fps))
+            # video diagnostics printout for user ease.
+            # Might incorporate into visible log at later date
+            frame_size = "Frame size: " + str(width) + str(height) + '\n'
+            total_frames = "Total frames: " + str(nframes) + '\n'
+            video_fps = "Fps: " + str(fps) + '\n'
+            #print(frame_size)
+            #print(total_frames)
+            #print(video_fps)
+            #checks if input is an actual video before opening csv.
+            # opens csv for statistics- might want to disable for production.
+            if fps==0 or nframes==1:
+                print('zerofps or image!')
+                continue
+            fff = open(f_out+".csv", 'w')
+            # reads the video out to give a frame and flag
+            flag, frame0 = video.read()
+            for i in range(nframes-1):
+                # loops through all of the frames, looking for strikes.
+                flag, frame1 = video.read()
+                diff1 = count_diff(frame0, frame1)
+                #checks for file output name system
+                name = f_out+"_%06d.jpg" % i
+                if not buttonState and type(fps)==int:
+                    timestamp = str(round(int(i)/int(fps), 2)).replace('.','-')
+                    name = f_out+ '-'+ str(timestamp) + '.jpg'
 
-# Get the input folder directory.
-# This directory will hold all of the video files to be analyzed.
-folder_path_in = StringVar()
-inputlabel = Label(master=mainframe, textvariable=folder_path_in, font=('Open Sans', 12))
-inputlabel.grid(row=0, column=1)
-inputbuttonimg = PhotoImage(file="assets/button_input-folder.png")
-inputbutton = Button(master=mainframe, text="Input Folder", command=browse_button_in)
-inputbutton.config(image=inputbuttonimg)
-inputbutton.grid(row=0, column=0)
+                if diff1 > threshold_integer:
+                    # pass condition
+                    cv2.imwrite(name, frame1)
+                    strikes = strikes + 1
+                text = str(f_out)+', '+str(diff1)
+                # print text to csv
+                fff.write(text + '\n')
+                fff.flush()
+                # pass frame forward
+                frame0 = frame1
+        fff.close()
+        # statistics
+        video_strikes = 'Strikes: '+ str(strikes) + '\n'
+        elapsed_time = 'Process Time: ' + str(int(time.time() - start)) + ' s\n'
+        #print(video_strikes)
+        #print(elapsed_time)
+        info = video_strikes+elapsed_time
+        info_popup(info)
+        #sends finished signal. Essentially terminates the thread.
+        self.threadProgress.emit(100)
+        self.finished.emit()
 
-# Get the output folder directory.
-# This directory will hold all of the image frames after analysis.
-folder_path_out = StringVar()
-outputlabel = Label(master=mainframe, textvariable=folder_path_out, font=('Open Sans', 12))
-outputlabel.grid(row=1, column=1)
-outputbuttonimg = PhotoImage(file="assets/button_output-folder.png")
-outputbutton = Button(master=mainframe, text="Output Folder", command=browse_button_out)
-outputbutton.config(image=outputbuttonimg)
-outputbutton.grid(row=1, column=0)
 
-# input for the Threshold.
-# Input can range from 10,000 all the way to 500,000 while giving good results.
-# default threshold will give sparse values, and should be lowered during use.
-thresholdsetpoint = StringVar()
-thresholdsetpoint.set(500000)
-thresholdlabel = Label(master=mainframe, text="Threshold Select", font=('Open Sans', 12))
-thresholdlabel.grid(row=2, column=0)
-threshold = Entry(master=mainframe, textvariable=thresholdsetpoint, font=('Open Sans', 12))
-threshold.grid(row=2, column=1)
+class Window(QMainWindow):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        #self.clicksCount = 0
+        self.setupUi()
+        # self.setIcon()
 
-# Analyze button
-# This should start the analysis, and give some kind of feedback.
-analysislabel = Label(master=mainframe, text='Perform Analysis?', font=('Open Sans', 12))
-analysislabel.grid(row=3, column=0)
-analysisbuttonimg = PhotoImage(file="assets/button_analyze.png")
-analysisbutton = Button(master=mainframe,
-                        text='Analyze!',
-                        command=execute_analysis)
-analysisbutton.config(image=analysisbuttonimg)
-analysisbutton.grid(row=3, column=1)
+    def setupUi(self):
+        # sets up the gui layout itself
+        self.setWindowTitle("Lightning Analysis")
+        self.resize(300, 150)
+        self.centralWidget = QWidget()
+        self.setCentralWidget(self.centralWidget)
+        # Create and connect widgets
+        #directory widgets
+        self.inputFileDirectoryButton = QPushButton("Select Input Directory", self)
+        self.inputFileDirectoryButton.clicked.connect(self.pick_new_input)
+        self.inputFileDirectoryLabel = QLabel(input_folder)
+        self.inputFileDirectoryLabel.setAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
+        self.outputFileDirectoryButton = QPushButton("Select Output Directory", self)
+        self.outputFileDirectoryButton.clicked.connect(self.pick_new_output)
+        self.outputFileDirectoryLabel = QLabel(output_folder)
+        self.outputFileDirectoryLabel.setAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
+        #file name widgets
+        self.outputFilenameLabel = QLabel('Output File Name (❓)')
+        self.outputFilenameLabel.setAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
+        self.outputFilenameLabel.setToolTip('Output File Name determines the standard used to give a file name. Frame number will output files as an integer, while timestamp will output files as a timestamp.')
+        self.outputFrameNumButton = QRadioButton("Frame Number")
+        self.outputFrameNumButton.setChecked(True)
+        self.outputFrameNumButton.toggled.connect(lambda:self.btnstate(self.outputFrameNumButton))
+        self.outputTimestampButton = QRadioButton("Timestamp")
+        self.outputTimestampButton.setChecked(False)
+        self.outputTimestampButton.toggled.connect(lambda:self.btnstate(self.outputTimestampButton))
+        #threshold widget
+        self.thresholdLabel = QLabel("Threshold (❓)", self)
+        self.thresholdLabel.setAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
+        self.thresholdLabel.setToolTip('Threshold determines the sensitivity of the computer vision algorithm. High thresholds will execute quickly with few output images, while low thresholds will potentially detect every frame of the video as a lightning event. Each video in your folder may need an individually tuned threshold; in this case, make subfolders for videos from the same camera and event. For example, separate your dash-cam footage and stationary camera footage.')
+        self.thresholdEntry = QLineEdit(threshold)
+        # restricts the threshold to be numbers only
+        self.onlyInt = QIntValidator()
+        self.thresholdEntry.setValidator(self.onlyInt)
+        self.analysisButton = QPushButton('Perform Analysis', self)
+        # self.analysisButton.clicked.connect(self.analysis)
+        self.analysisButton.clicked.connect(self.runLongTask)
+        self.progressBar = QProgressBar(self)
+        self.progressBar.setAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
+        #self.progressBar.setGeometry(200, 80, 250, 20)
+        self.progressBar.setValue(0)
 
-# Progress Bar
-# A progress bar can be installed here, although since that requires multithreading
-# I am not super exited to get into it until the whole system is working.
-# For now, a placeholder bar gets to occupy the slot.
-analysisprogress = ttk.Progressbar(master=root,
-                                   orient=HORIZONTAL,
-                                   length=600,
-                                   mode='determinate')
-analysisprogress.grid(row=1, column=0)
+        # Set the layout
+        layout = QVBoxLayout()
+        layout.addWidget(self.inputFileDirectoryButton)
+        layout.addWidget(self.inputFileDirectoryLabel)
+        layout.addWidget(self.outputFileDirectoryButton)
+        layout.addWidget(self.outputFileDirectoryLabel)
+        layout.addWidget(self.outputFilenameLabel)
+        layout.addWidget(self.outputFrameNumButton)
+        layout.addWidget(self.outputTimestampButton)
+        layout.addWidget(self.thresholdLabel)
+        layout.addWidget(self.thresholdEntry)
+        layout.addWidget(self.analysisButton)
+        layout.addWidget(self.progressBar)
+        self.centralWidget.setLayout(layout)
 
-# Instructions Text Box
-# This sits below the mainframe, and gives instructions on running the software.
-instructions = '''Select an input folder with lightning videos, then select a
-folder to output the image results. The default threshold of 500,000 is
-agressive; if you don't get many images after processing, reduce the threshold
-by factors of 10 until you do. Clicking 'Analyze!' will start the process. You
-can watch the files in real time in your output folder to verify that the
-script is running.
-https://blablabliam.github.io'''
-instructionbox = Label(master=root, text=instructions, font=('Open Sans', 10))
-instructionbox.grid(row=2, column=0)
+    def pick_new_input(self):
+        dialog = QFileDialog()
+        folder_path = dialog.getExistingDirectory(None, "Select Input Folder")
+        global input_folder
+        input_folder = str(folder_path)
+        self.inputFileDirectoryLabel.setText(str(folder_path))
+        #reset the progress bar to 0
+        self.progressBar.setValue(0)
+        self.analysisButton.setEnabled(True)
 
-# establish mainframe padding between children
-# for child in mainframe.winfo_children():
-#     child.grid_configure(padx=5, pady=5)
+    def pick_new_output(self):
+        dialog = QFileDialog()
+        folder_path = dialog.getExistingDirectory(None, "Select Output Folder")
+        global output_folder
+        output_folder = str(folder_path)
+        self.outputFileDirectoryLabel.setText(str(folder_path))
+        #reset the progress bar to 0
+        self.progressBar.setValue(0)
+        self.analysisButton.setEnabled(True)
 
-inputlabel.focus()
+    def btnstate(self, b):
+        global buttonState
+        if b.text() == "Frame Number":
+            if b.isChecked() == True:
+                buttonState = True
+                print(b.text()+" is selected")
+            else:
+                buttonState = False
+                print(b.text()+" is deselected")
 
-# executes the main window.
-root.mainloop()
+
+    def runLongTask(self):
+        # set the threshold
+        global threshold
+        threshold = self.thresholdEntry.text()
+        # Step 2: Create a QThread object
+        self.thread = QThread()
+        # Step 3: Create a worker object
+        self.worker = Worker()
+        # Step 4: Move worker to the thread
+        self.worker.moveToThread(self.thread)
+        # setup progress bar signal
+        self.worker.threadProgress.connect(self.onCountChanged)
+        # Step 5: Connect signals and slots
+        self.thread.started.connect(self.worker.run)
+        self.worker.finished.connect(self.thread.quit)
+        self.worker.finished.connect(self.worker.deleteLater)
+        self.thread.finished.connect(self.thread.deleteLater)
+        # self.worker.progress.connect(self.reportProgress)
+        # Step 6: Start the thread
+        self.thread.start()
+
+        # Final resets
+        self.analysisButton.setEnabled(False)
+        self.thread.finished.connect(self.enableAnalysisButton)
+        # self.thread.finished.connect(
+        #     lambda: self.analysisButton.setEnabled(True)
+        # )
+
+    def onCountChanged(self, value):
+        self.progressBar.setValue(value)
+
+    def enableAnalysisButton(self):
+        self.analysisButton.setEnabled(True)
+
+
+
+
+app = QApplication(sys.argv)
+
+# Dark Mode code
+# Force the style to be the same on all OSs:
+app.setStyle("Fusion")
+
+# Now use a palette to switch to dark colors:
+palette = QPalette()
+palette.setColor(QPalette.Window, QColor(53, 53, 53))
+palette.setColor(QPalette.WindowText, Qt.white)
+palette.setColor(QPalette.Base, QColor(25, 25, 25))
+palette.setColor(QPalette.AlternateBase, QColor(53, 53, 53))
+palette.setColor(QPalette.ToolTipBase, Qt.black)
+palette.setColor(QPalette.ToolTipText, Qt.white)
+palette.setColor(QPalette.Text, Qt.white)
+palette.setColor(QPalette.Button, QColor(53, 53, 53))
+palette.setColor(QPalette.ButtonText, Qt.white)
+palette.setColor(QPalette.BrightText, Qt.red)
+palette.setColor(QPalette.Link, QColor(42, 130, 218))
+palette.setColor(QPalette.Highlight, QColor(42, 130, 218))
+palette.setColor(QPalette.HighlightedText, Qt.black)
+app.setPalette(palette)
+
+# finish building window
+win = Window()
+win.show()
+sys.exit(app.exec_())
