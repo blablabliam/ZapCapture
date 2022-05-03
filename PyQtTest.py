@@ -21,6 +21,7 @@ from PySide2.QtWidgets import (
     QLabel,
     QMainWindow,
     QPushButton,
+    QRadioButton,
     QVBoxLayout,
     QWidget,
     QFileDialog,
@@ -49,6 +50,9 @@ global output_folder
 output_folder = 'No Folder Chosen'
 global threshold
 threshold = '5000000'
+#buttonstate determines output file name type.
+global buttonState
+buttonState = True
 
 
 def count_diff(img1, img2):
@@ -99,6 +103,7 @@ class Worker(QObject):
         global input_folder
         global output_folder
         global threshold
+        global buttonState
         in_folder = input_folder
         out_folder = output_folder
         threshold_integer = int(threshold)
@@ -138,6 +143,7 @@ class Worker(QObject):
             width = (int)(video.get(cv2.CAP_PROP_FRAME_WIDTH))
             height = (int)(video.get(cv2.CAP_PROP_FRAME_HEIGHT))
             fps = (int)(video.get(cv2.CAP_PROP_FPS))
+            #print('FPS is '+ str(fps))
             # video diagnostics printout for user ease.
             # Might incorporate into visible log at later date
             frame_size = "Frame size: " + str(width) + str(height) + '\n'
@@ -146,7 +152,11 @@ class Worker(QObject):
             #print(frame_size)
             #print(total_frames)
             #print(video_fps)
+            #checks if input is an actual video before opening csv.
             # opens csv for statistics- might want to disable for production.
+            if fps==0 or nframes==1:
+                print('zerofps or image!')
+                continue
             fff = open(f_out+".csv", 'w')
             # reads the video out to give a frame and flag
             flag, frame0 = video.read()
@@ -154,13 +164,16 @@ class Worker(QObject):
                 # loops through all of the frames, looking for strikes.
                 flag, frame1 = video.read()
                 diff1 = count_diff(frame0, frame1)
+                #checks for file output name system
                 name = f_out+"_%06d.jpg" % i
+                if not buttonState and type(fps)==int:
+                    timestamp = str(round(int(i)/int(fps), 2)).replace('.','-')
+                    name = f_out+ '-'+ str(timestamp) + '.jpg'
 
                 if diff1 > threshold_integer:
                     # pass condition
                     cv2.imwrite(name, frame1)
                     strikes = strikes + 1
-
                 text = str(f_out)+', '+str(diff1)
                 # print text to csv
                 fff.write(text + '\n')
@@ -194,6 +207,7 @@ class Window(QMainWindow):
         self.centralWidget = QWidget()
         self.setCentralWidget(self.centralWidget)
         # Create and connect widgets
+        #directory widgets
         self.inputFileDirectoryButton = QPushButton("Select Input Directory", self)
         self.inputFileDirectoryButton.clicked.connect(self.pick_new_input)
         self.inputFileDirectoryLabel = QLabel(input_folder)
@@ -202,6 +216,17 @@ class Window(QMainWindow):
         self.outputFileDirectoryButton.clicked.connect(self.pick_new_output)
         self.outputFileDirectoryLabel = QLabel(output_folder)
         self.outputFileDirectoryLabel.setAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
+        #file name widgets
+        self.outputFilenameLabel = QLabel('Output File Name (❓)')
+        self.outputFilenameLabel.setAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
+        self.outputFilenameLabel.setToolTip('Output File Name determines the standard used to give a file name. Frame number will output files as an integer, while timestamp will output files as a timestamp.')
+        self.outputFrameNumButton = QRadioButton("Frame Number")
+        self.outputFrameNumButton.setChecked(True)
+        self.outputFrameNumButton.toggled.connect(lambda:self.btnstate(self.outputFrameNumButton))
+        self.outputTimestampButton = QRadioButton("Timestamp")
+        self.outputTimestampButton.setChecked(False)
+        self.outputTimestampButton.toggled.connect(lambda:self.btnstate(self.outputTimestampButton))
+        #threshold widget
         self.thresholdLabel = QLabel("Threshold (❓)", self)
         self.thresholdLabel.setAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
         self.thresholdLabel.setToolTip('Threshold determines the sensitivity of the computer vision algorithm. High thresholds will execute quickly with few output images, while low thresholds will potentially detect every frame of the video as a lightning event. Each video in your folder may need an individually tuned threshold; in this case, make subfolders for videos from the same camera and event. For example, separate your dash-cam footage and stationary camera footage.')
@@ -223,6 +248,9 @@ class Window(QMainWindow):
         layout.addWidget(self.inputFileDirectoryLabel)
         layout.addWidget(self.outputFileDirectoryButton)
         layout.addWidget(self.outputFileDirectoryLabel)
+        layout.addWidget(self.outputFilenameLabel)
+        layout.addWidget(self.outputFrameNumButton)
+        layout.addWidget(self.outputTimestampButton)
         layout.addWidget(self.thresholdLabel)
         layout.addWidget(self.thresholdEntry)
         layout.addWidget(self.analysisButton)
@@ -248,6 +276,17 @@ class Window(QMainWindow):
         #reset the progress bar to 0
         self.progressBar.setValue(0)
         self.analysisButton.setEnabled(True)
+
+    def btnstate(self, b):
+        global buttonState
+        if b.text() == "Frame Number":
+            if b.isChecked() == True:
+                buttonState = True
+                print(b.text()+" is selected")
+            else:
+                buttonState = False
+                print(b.text()+" is deselected")
+
 
     def runLongTask(self):
         # set the threshold
