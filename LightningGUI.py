@@ -11,6 +11,8 @@ __date__ = "5-2-2022"
 import sys
 import time
 import os
+#tkinter required for pyinstaller
+import tkinter
 from PIL import Image, ImageTk
 import cv2
 
