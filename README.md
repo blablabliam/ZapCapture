@@ -1,4 +1,4 @@
-# Lightning Analyzer
+# ZapCapture
  A computer vision program to extract lightning strikes! ⚡
 
 
@@ -24,10 +24,10 @@
     <img src="images/lightning5.jpg" alt="Lightning Strikes!" width="80" height="80">
   </a>
 
-  <h3 align="center">Lightning Key Frame Extraction GUI</h3>
+  <h3 align="center">ZapCapture</h3>
 
   <p align="center">
-    A Jupyter Notebook that extracts lightning images from videos of storms! :lightning:
+    A python program that extracts lightning images/gifs from videos of storms! ⚡
   </p>
 </p>
 
@@ -53,10 +53,10 @@
 <!-- ABOUT THE PROJECT -->
 ## About The Project
 
-Sometimes I like to set up my camera during storms, but watching hours of footage after a lightning storm is time consuming and not very fun. I went to find an existing script to perform this task, and found one written in Python 2 by programmer and mad scientist [Saulius Lukse](https://lukse.lt/uzrasai/2015-05-lightning-strikes-and-python/). I converted the handy script to Python 3, and fit the whole thing into a Jupyter notebook for easy access. After showing off my
-cool result pictures, people expressed serious interest in running the software
-themselves. This wraps the project in a 'handsome' GUI and make it easy enough
-for stormchasers and tinkerers to use.
+Sometimes I like to set up my camera during storms, but watching hours of footage after a lightning storm is time consuming and not very fun. I went to find an existing script to perform this task, and found one written in Python 2 by programmer and mad scientist [Saulius Lukse](https://lukse.lt/uzrasai/2015-05-lightning-strikes-and-python/). I converted the handy script to Python 3, and fit the whole thing into a Jupyter notebook for easy access.
+
+After showing off my cool pictures, people expressed serious interest in running the software themselves. This wraps the project in a GUI and make it easy enough
+for stormchasers and tinkerers to use, while adding additional features like gif support and a progress visual.
 
 ### Built With
 
@@ -64,6 +64,7 @@ for stormchasers and tinkerers to use.
 * [OpenCV](https://opencv.org/)
 * [Pillow](https://pillow.readthedocs.io/en/stable/)
 * [Tkinter](https://docs.python.org/3/library/tkinter.html)
+* [imageio](https://pypi.org/project/imageio/)
 * [Atom](https://atom.io/)
 
 <!--Project Roadmap -->
@@ -81,7 +82,9 @@ for stormchasers and tinkerers to use.
  * Multithreading for faster processing speed ✔️
  * Progress bar ✔️
  * Error handling to give feedback during analysis ✔️
- * Saved file frame/timestamp option
+ * Saved file frame/timestamp option ✔️
+ * Implement detection deadzone ✔️
+ * gif output mode for cool multi-frame lightning ✔️
  * Signed files for security
 
 
@@ -89,7 +92,7 @@ for stormchasers and tinkerers to use.
 <!-- DESIGN DESCRIPTION -->
 ## Design
 
-Currently, the program takes a folder full of videos and uses OpenCV to detect differences between frames. If the difference exceeds a user-defined threshold, then the image is saved as a jpg. You can tune the threshold to suit your individual video; on a ten minute video, this program can extract less than a hundred frames or several thousand, depending on the threshold.
+Currently, ZapCapture takes a folder full of videos and uses OpenCV to detect differences between frames. If the difference exceeds a user-defined threshold, then the image is saved as a jpg. You can tune the threshold to suit your individual video; on a ten minute video, ZapCapture can extract less than a hundred frames or several thousand, depending on the threshold. Sequences of frames will also be saved as a gif file, so that you can watch strikes happen in slow-motion.
 
 <p align="center">
   <img src="images/LightningAnalyzerGUI.png" alt="GUI design">
@@ -99,7 +102,7 @@ Currently, the program takes a folder full of videos and uses OpenCV to detect d
 
 <!-- USING THE SOFTWARE -->
 ## Instructions
-
+<!--
 #### Windows 10
 
 Download the assets folder and LightningGUI.exe, and store them in the same place. Simply run the .exe from there! The .exe was never meant to be a long-term
@@ -111,13 +114,15 @@ Download the assets folder and LightningGUI file, and store them in the same pla
 
 `$ ./LightningGUI`
 
+-->
+
 #### Processing
 
-Use the input and output folder buttons to select a folder with lightning videos and an empty folder. Then, set an appropriate threshold for your videos. On the example video, the optimum threshold is around 500,000; the higher the threshold, the faster the process will run and the less output images you will get. You will have to experiment to find the best threshold, but starting high and going lower is the best approach. Once the threshold is set, click 'Analyze!' wait a bit. The program will take a few minutes to run.
+Use the input and output folder buttons to select a folder with lightning videos and an empty folder. Then, set an appropriate threshold for your videos. On the example video, the optimum threshold is around 500,000; the higher the threshold, the faster the process will run and the less output images you will get. You will have to experiment to find the best threshold, but starting high and going lower is the best approach. If you are having trouble, check the csv outputs and pick a threshold value that is higher than the typical range. Select a file name convention- frame number or timestamp (seconds-miliseconds format). Finally, click 'Analyze!' and wait a bit. The program will take a few minutes to run. Once the program is finished, your output folder will contain all of the image and gif files, as well as a csv giving threshold data for each frame on every file.
 
 #### Building
 
-Interested in building LightningGUI on your operating system? To build LightningGUI, you need to have Python 3.6 or later. Then, use pip to install the
+Interested in building ZapCapture on your operating system? To build ZapCapture, you need to have Python 3.6 or later. Then, use pip to install the
 requirements.txt file.
 
 `$ python -m pip install -r requirements.txt`

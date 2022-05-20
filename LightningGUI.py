@@ -6,7 +6,7 @@ __version__ = "2"
 __maintainer__ = "Liam Plybon"
 __email__ = "lplybon1@gmail.com"
 __status__ = "Prototype"
-__date__ = "5-2-2022"
+__date__ = "5-19-2022"
 
 import sys
 import time
@@ -15,6 +15,7 @@ import os
 import tkinter
 from PIL import Image, ImageTk
 import cv2
+import imageio
 
 # imports for gui interface
 from PySide2.QtCore import Qt, QObject, QThread, Signal, Slot
@@ -126,7 +127,7 @@ class Worker(QObject):
         try:
             # determine if the output folder is valid
             path, dirs, files = next(os.walk(out_folder))
-            filecount = len(files)
+            outfilecount = len(files)
         except:
             error_popup('Output folder not valid. Select a valid folder.')
             self.threadProgress.emit(0)
@@ -135,7 +136,12 @@ class Worker(QObject):
         for index, filename in enumerate(os.listdir(in_folder)):
             # itterates over files in directory
             # f_in and f_out control input and destination targets
-            completion = 10+(90*((index+1)/filecount))
+            try:
+                completion = 10+(90*((index+1)/filecount))
+            except:
+                self.threadProgress.emit(0)
+                self.finished.emit()
+                return
             self.threadProgress.emit(completion)
             f_in = os.path.join(in_folder, filename)
             f_out = os.path.join(out_folder, filename)
@@ -162,26 +168,79 @@ class Worker(QObject):
             fff = open(f_out+".csv", 'w')
             # reads the video out to give a frame and flag
             flag, frame0 = video.read()
+            # savestate for using the deadzone.
+            deadzone = 0
+            # creates list for gif frames
+            gif_frames = []
+            gif_name = ''
             for i in range(nframes-1):
                 # loops through all of the frames, looking for strikes.
+                # itterate progress bar
+                file_completion = 10*(i/nframes)*((index+1)/filecount)+completion
+                self.threadProgress.emit(file_completion)
+                # process the video
                 flag, frame1 = video.read()
                 diff1 = count_diff(frame0, frame1)
                 #checks for file output name system
                 name = f_out+"_%06d.jpg" % i
                 if not buttonState and type(fps)==int:
                     timestamp = str(round(int(i)/int(fps), 2)).replace('.','-')
-                    name = f_out+ '-'+ str(timestamp) + '.jpg'
+                    name = f_out+ '-'+ str(timestamp) + '.png'
 
                 if diff1 > threshold_integer:
-                    # pass condition
-                    cv2.imwrite(name, frame1)
+                    # pass condition to save a frame and start a save state
                     strikes = strikes + 1
+                    #write previous gif list to a gif
+                    if deadzone == 0 and strikes > 1:
+                        gif_start_frame = gif_frames[0]
+                        gif_frames.pop(0)
+                        #gif_name = str(name)[:-4] + '.gif'
+                        with imageio.get_writer(gif_name, mode="I") as writer:
+                            for idx, frame in enumerate(gif_frames):
+                                rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                                writer.append_data(rgb_frame)
+                        gif_frames=[]
+                    # deadzone must be an int > 0 to save an image.
+                    deadzone = 3
+                    gif_name = str(name)[:-4] + '.gif'
+
+                if diff1 < threshold_integer/100:
+                    # itterates deadzone to zero, leaving deadzone condition.
+                    # if the diff is less than 1% of the threshold, the
+                    # deadzone is reduced by 1. Deadzone of 0 will result
+                    # in not saving the frame.
+                    if deadzone > 0:
+                        deadzone = deadzone - 1
+
+                if deadzone > 0:
+                    #save frame for passing the deadzone condition.
+                    cv2.imwrite(name, frame1)
+                    #save frame to list for writing to gif
+                    gif_frames.append(frame1)
+
+
                 text = str(f_out)+', '+str(diff1)
                 # print text to csv
                 fff.write(text + '\n')
                 fff.flush()
                 # pass frame forward
                 frame0 = frame1
+                if i == nframes-1 and not gif_frames[0]:
+                    #saves a gif at the end of a file
+                    gif_start_frame = gif_frames[0]
+                    gif_frames.pop(0)
+                    #gif_name = str(name)[:-4] + '.gif'
+                    print(gif_name)
+                    with imageio.get_writer(gif_name, mode="I") as writer:
+                        for idx, frame in enumerate(gif_frames):
+                            rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                            writer.append_data(rgb_frame)
+                    # gif_start_frame.save(gif_name,
+                    #                      save_all=True,
+                    #                      append_images=gif_frames,
+                    #                      duration=100,
+                    #                      loop=0)
+                    gif_frames=[]
         fff.close()
         # statistics
         video_strikes = 'Strikes: '+ str(strikes) + '\n'
@@ -204,7 +263,7 @@ class Window(QMainWindow):
 
     def setupUi(self):
         # sets up the gui layout itself
-        self.setWindowTitle("Lightning Analysis")
+        self.setWindowTitle("ZapCapture")
         self.resize(300, 150)
         self.centralWidget = QWidget()
         self.setCentralWidget(self.centralWidget)
@@ -231,7 +290,7 @@ class Window(QMainWindow):
         #threshold widget
         self.thresholdLabel = QLabel("Threshold (❓)", self)
         self.thresholdLabel.setAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
-        self.thresholdLabel.setToolTip('Threshold determines the sensitivity of the computer vision algorithm. High thresholds will execute quickly with few output images, while low thresholds will potentially detect every frame of the video as a lightning event. Each video in your folder may need an individually tuned threshold; in this case, make subfolders for videos from the same camera and event. For example, separate your dash-cam footage and stationary camera footage.')
+        self.thresholdLabel.setToolTip('Threshold determines the sensitivity of the computer vision algorithm. High thresholds will execute quickly with few output images, while low thresholds will potentially detect every frame of the video as a lightning event. Each video in your folder may need an individually tuned threshold; in this case, make subfolders for videos from the same camera and event. For example, separate your dash-cam footage and stationary camera footage. Nighttime footage can require thresholds aroung 10 million, while daytime footage can be as low as 10 thousand.')
         self.thresholdEntry = QLineEdit(threshold)
         # restricts the threshold to be numbers only
         self.onlyInt = QIntValidator()

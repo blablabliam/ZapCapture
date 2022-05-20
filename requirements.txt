@@ -1,4 +1,5 @@
 altgraph==0.17.2
+imageio==2.19.2
 numpy==1.22.3
 opencv-python-headless==4.5.5.64
 Pillow==9.1.0
