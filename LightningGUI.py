@@ -128,6 +128,7 @@ class Worker(QObject):
             # determine if the output folder is valid
             path, dirs, files = next(os.walk(out_folder))
             outfilecount = len(files)
+            per_file = 90/(outfilecount)
         except:
             error_popup('Output folder not valid. Select a valid folder.')
             self.threadProgress.emit(0)
@@ -137,7 +138,8 @@ class Worker(QObject):
             # itterates over files in directory
             # f_in and f_out control input and destination targets
             try:
-                completion = 10+(90*((index+1)/filecount))
+                file_base = 10 + index*per_file
+                completion = file_base
             except:
                 self.threadProgress.emit(0)
                 self.finished.emit()
@@ -145,7 +147,11 @@ class Worker(QObject):
             self.threadProgress.emit(completion)
             f_in = os.path.join(in_folder, filename)
             f_out = os.path.join(out_folder, filename)
-            video = cv2.VideoCapture(f_in)
+            try:
+                video = cv2.VideoCapture(f_in)
+            except:
+                print('video lib error?')
+                return
             # gets statistics on current video
             nframes = (int)(video.get(cv2.CAP_PROP_FRAME_COUNT))
             width = (int)(video.get(cv2.CAP_PROP_FRAME_WIDTH))
@@ -162,10 +168,13 @@ class Worker(QObject):
             #print(video_fps)
             #checks if input is an actual video before opening csv.
             # opens csv for statistics- might want to disable for production.
+            print('asdf')
             if fps==0 or nframes==1:
                 print('zerofps or image!')
                 continue
+            print('asdfg')
             fff = open(f_out+".csv", 'w')
+            print('asdfgh')
             # reads the video out to give a frame and flag
             flag, frame0 = video.read()
             # savestate for using the deadzone.
@@ -176,7 +185,9 @@ class Worker(QObject):
             for i in range(nframes-1):
                 # loops through all of the frames, looking for strikes.
                 # itterate progress bar
-                file_completion = 10*(i/nframes)*((index+1)/filecount)+completion
+                file_cap = (i/(nframes+1))*per_file
+                file_completion = file_base + file_cap
+                print(file_completion)
                 self.threadProgress.emit(file_completion)
                 # process the video
                 flag, frame1 = video.read()
@@ -240,7 +251,10 @@ class Worker(QObject):
                     #                      append_images=gif_frames,
                     #                      duration=100,
                     #                      loop=0)
+                    #reset the gif frames list and the deadzone before next vid
                     gif_frames=[]
+                    deadzone = 0
+        print('analysisdone')
         fff.close()
         # statistics
         video_strikes = 'Strikes: '+ str(strikes) + '\n'
@@ -248,6 +262,7 @@ class Worker(QObject):
         #print(video_strikes)
         #print(elapsed_time)
         info = video_strikes+elapsed_time
+        #attempting to fix crash error after accnowledging popup.
         info_popup(info)
         #sends finished signal. Essentially terminates the thread.
         self.threadProgress.emit(100)
