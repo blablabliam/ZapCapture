@@ -39,7 +39,7 @@ from PySide2.QtGui import (
     QIcon
 )
 
-#global variables
+#global constants
 SCALE = 0.5
 NOISE_CUTOFF = 5
 BLUR_SIZE = 3
@@ -182,12 +182,13 @@ class Worker(QObject):
             # creates list for gif frames
             gif_frames = []
             gif_name = ''
+            #strike counter independent for file. Helps with writing gifs.
+            file_strikes = 0
             for i in range(nframes-1):
                 # loops through all of the frames, looking for strikes.
                 # itterate progress bar
                 file_cap = (i/(nframes+1))*per_file
                 file_completion = file_base + file_cap
-                print(file_completion)
                 self.threadProgress.emit(file_completion)
                 # process the video
                 flag, frame1 = video.read()
@@ -201,8 +202,11 @@ class Worker(QObject):
                 if diff1 > threshold_integer:
                     # pass condition to save a frame and start a save state
                     strikes = strikes + 1
-                    #write previous gif list to a gif
-                    if deadzone == 0 and strikes > 1:
+                    file_strikes = file_strikes + 1
+                    #write previous gif list to a gif if not the second frame
+                    #and the deadzone is already zero (ie lightning has already
+                    #struck and the gif buffer contains frames).
+                    if deadzone == 0 and file_strikes > 1:
                         gif_start_frame = gif_frames[0]
                         gif_frames.pop(0)
                         #gif_name = str(name)[:-4] + '.gif'
