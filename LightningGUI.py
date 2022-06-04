@@ -114,6 +114,7 @@ class Worker(QObject):
         # set framecount, strike counter to zero before looping all frames
         frame_count = 0
         strikes = 0
+        #set progress bar to 10 so people know it is working
         self.threadProgress.emit(10)
         try:
             # error if the folder is invalid. Check folder for verification.
@@ -128,12 +129,18 @@ class Worker(QObject):
             # determine if the output folder is valid
             path, dirs, files = next(os.walk(out_folder))
             outfilecount = len(files)
+            #set per file progress bar quantity
             per_file = 90/(outfilecount)
         except:
             error_popup('Output folder not valid. Select a valid folder.')
             self.threadProgress.emit(0)
             self.finished.emit()
             return
+        #create frame and gif directories
+        impath = os.path.join(out_folder,'frames/')
+        gifpath = os.path.join(out_folder, 'gifs/')
+        os.mkdir(impath)
+        os.mkdir(gifpath)
         for index, filename in enumerate(os.listdir(in_folder)):
             # itterates over files in directory
             # f_in and f_out control input and destination targets
@@ -168,13 +175,10 @@ class Worker(QObject):
             #print(video_fps)
             #checks if input is an actual video before opening csv.
             # opens csv for statistics- might want to disable for production.
-            print('asdf')
             if fps==0 or nframes==1:
                 print('zerofps or image!')
                 continue
-            print('asdfg')
             fff = open(f_out+".csv", 'w')
-            print('asdfgh')
             # reads the video out to give a frame and flag
             flag, frame0 = video.read()
             # savestate for using the deadzone.
@@ -194,22 +198,26 @@ class Worker(QObject):
                 flag, frame1 = video.read()
                 diff1 = count_diff(frame0, frame1)
                 #checks for file output name system
-                name = f_out+"_%06d.jpg" % i
+                #names files and gifs respectively.
                 if not buttonState and type(fps)==int:
                     timestamp = str(round(int(i)/int(fps), 2)).replace('.','-')
-                    name = f_out+ '-'+ str(timestamp) + '.png'
+                    imname = impath + '/' + str(filename) + str(timestamp) + '.png'
+                    gifname = gifpath + '/' + str(filename) + str(timestamp) + '.gif'
+                else:
+                    imname = impath + str(filename) + "_%06d.jpg" % i
+                    gifname = gifpath + str(filename) +  "_%06d.gif" % i
 
                 if diff1 > threshold_integer:
                     # pass condition to save a frame and start a save state
                     strikes = strikes + 1
                     file_strikes = file_strikes + 1
+                    gif_name = gifname
                     #write previous gif list to a gif if not the second frame
                     #and the deadzone is already zero (ie lightning has already
                     #struck and the gif buffer contains frames).
                     if deadzone == 0 and file_strikes > 1:
                         gif_start_frame = gif_frames[0]
                         gif_frames.pop(0)
-                        #gif_name = str(name)[:-4] + '.gif'
                         with imageio.get_writer(gif_name, mode="I") as writer:
                             for idx, frame in enumerate(gif_frames):
                                 rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
@@ -217,7 +225,7 @@ class Worker(QObject):
                         gif_frames=[]
                     # deadzone must be an int > 0 to save an image.
                     deadzone = 3
-                    gif_name = str(name)[:-4] + '.gif'
+                    gif_name = gifname
 
                 if diff1 < threshold_integer/100:
                     # itterates deadzone to zero, leaving deadzone condition.
@@ -229,7 +237,7 @@ class Worker(QObject):
 
                 if deadzone > 0:
                     #save frame for passing the deadzone condition.
-                    cv2.imwrite(name, frame1)
+                    cv2.imwrite(imname, frame1)
                     #save frame to list for writing to gif
                     gif_frames.append(frame1)
 
@@ -244,18 +252,10 @@ class Worker(QObject):
                     #saves a gif at the end of a file
                     gif_start_frame = gif_frames[0]
                     gif_frames.pop(0)
-                    #gif_name = str(name)[:-4] + '.gif'
-                    print(gif_name)
                     with imageio.get_writer(gif_name, mode="I") as writer:
                         for idx, frame in enumerate(gif_frames):
                             rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                             writer.append_data(rgb_frame)
-                    # gif_start_frame.save(gif_name,
-                    #                      save_all=True,
-                    #                      append_images=gif_frames,
-                    #                      duration=100,
-                    #                      loop=0)
-                    #reset the gif frames list and the deadzone before next vid
                     gif_frames=[]
                     deadzone = 0
         print('analysisdone')
