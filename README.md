@@ -70,7 +70,7 @@ for stormchasers and tinkerers to use, while adding additional features like gif
 <!--Project Roadmap -->
 ## Roadmap
 #### V0 ✔️ (See Independent Repository)
-* Implement a working script in a Jupyter Notebook. ✔️
+* Script in a Jupyter Notebook. ✔️
 
 #### V1 ✔️
 * Implement a working GUI that is OS independent. ✔️
@@ -79,20 +79,21 @@ for stormchasers and tinkerers to use, while adding additional features like gif
 * Quality of Life Features
  * requirements.txt ✔️
  * Graphics overhaul for less ugly interface ✔️
- * Multithreading for faster processing speed ✔️
+ * Multi-threading for faster processing ✔️
  * Progress bar ✔️
  * Error handling to give feedback during analysis ✔️
  * Saved file frame/timestamp option ✔️
- * Implement detection deadzone ✔️
- * gif output mode for cool multi-frame lightning ✔️
- * Signed files for security
+ * Detection dead-zone ✔️
+ * GIF output mode for cool multi-frame lightning ✔️
+ * Fix crash after analysis ✔️
+ * Windows Installation ✔️
 
 
 
 <!-- DESIGN DESCRIPTION -->
 ## Design
 
-Currently, ZapCapture takes a folder full of videos and uses OpenCV to detect differences between frames. If the difference exceeds a user-defined threshold, then the image is saved as a jpg. You can tune the threshold to suit your individual video; on a ten minute video, ZapCapture can extract less than a hundred frames or several thousand, depending on the threshold. Sequences of frames will also be saved as a gif file, so that you can watch strikes happen in slow-motion.
+ZapCapture takes a folder full of videos and uses OpenCV to detect differences between footage frames. If the difference exceeds a user-defined threshold, then the image is saved as a PNG. You can tune the detection threshold to suit your individual video; on a ten minute video, ZapCapture can extract less than a hundred frames or several thousand, depending on the threshold. Sequences of frames will also be saved as gif files, so that you can watch strikes happen in slow-motion.
 
 <p align="center">
   <img src="images/LightningAnalyzerGUI.png" alt="GUI design">
@@ -102,6 +103,13 @@ Currently, ZapCapture takes a folder full of videos and uses OpenCV to detect di
 
 <!-- USING THE SOFTWARE -->
 ## Instructions
+
+Instructions for V2 coming soon!
+
+<!-- #### Windows 10
+ -->
+<!-- Download and install the ZapCapture application for Windows. Run the application. -->
+
 <!--
 #### Windows 10
 
@@ -118,22 +126,26 @@ Download the assets folder and LightningGUI file, and store them in the same pla
 
 #### Processing
 
-Use the input and output folder buttons to select a folder with lightning videos and an empty folder. Then, set an appropriate threshold for your videos. On the example video, the optimum threshold is around 500,000; the higher the threshold, the faster the process will run and the less output images you will get. You will have to experiment to find the best threshold, but starting high and going lower is the best approach. If you are having trouble, check the csv outputs and pick a threshold value that is higher than the typical range. Select a file name convention- frame number or timestamp (seconds-miliseconds format). Finally, click 'Analyze!' and wait a bit. The program will take a few minutes to run. Once the program is finished, your output folder will contain all of the image and gif files, as well as a csv giving threshold data for each frame on every file.
+1. Use the input and output folder buttons to select a folder with lightning videos and an empty folder.
+2. Set an appropriate threshold for your videos. The higher the threshold, the faster the process will run and the less output images you will get. You will have to experiment to find the best threshold, but starting high and going lower is the best approach. The default threshold is too high for almost any detections to occur, so you will need to delete a 0 or two for the best results. If you are having trouble, check the csv outputs and pick a threshold value that is higher than the typical detection value.
+3. Select a file name convention- frame number or timestamp (seconds-milliseconds format).
+4. Finally, click 'Analyze!' and wait a bit. The program will take a few minutes to run. Once analysis is finished, your output folder will contain all of the image and gif files, as well as a csv giving threshold data for each frame on every file.
 
 #### Building
 
-Interested in building ZapCapture on your operating system? To build ZapCapture, you need to have Python 3.6 or later. Then, use pip to install the
-requirements.txt file.
+Interested in building ZapCapture on your system? To build ZapCapture, you need to have Python 3.6 or later. Then, use pip to install the requirements.txt file.
 
 `$ python -m pip install -r requirements.txt`
 
-Finally, use pyinstaller to make the file yourself.
+Run LightningGUI.py to analyze some lightning!
+
+<!-- Finally, use pyinstaller to make the file yourself.
 
 `$ cd Downloads/Lightning-Analyzer-GUI `
 
 `$ pyinstaller LightningGUI.py --onefile --icon logo.ico`
 
-Move the `LightningGUI` file out of the `dist` folder and into to `Lightning-Analyzer-GUI` folder to run it.
+Move the `LightningGUI` file out of the `dist` folder and into to `Lightning-Analyzer-GUI` folder to run it. -->
 
 
 <!-- LICENSE -->
@@ -147,7 +159,7 @@ Distributed under the MIT License. See `LICENSE` for more information.
 
 Liam Plybon - lplybon1@gmail.com
 
-Project Link: [https://github.com/blablabliam/Lightning-Analyzer-GUI](https://github.com/blablabliam/Lightning-Analyzer-GUI)
+Project Link: [https://github.com/blablabliam/ZapCapture](https://github.com/blablabliam/ZapCapture)
 
 Like it enough to spend money? Don't feel pressured.
 
@@ -162,13 +174,13 @@ Like it enough to spend money? Don't feel pressured.
 
 <!-- MARKDOWN LINKS & IMAGES -->
 <!-- https://www.markdownguide.org/basic-syntax/#reference-style-links -->
-[contributors-shield]: https://img.shields.io/github/contributors/blablabliam/Lightning-Analyzer-GUI.svg?style=for-the-badge
-[contributors-url]: https://github.com/blablabliam/Lightning-Analyzer-GUI/graphs/contributors
-[forks-shield]: https://img.shields.io/github/forks/blablabliam/Lightning-Analyzer-GUI.svg?style=for-the-badge
-[forks-url]: https://github.com/blablabliam/Lightning-Analyzer-GUI/network/members
-[stars-shield]: https://img.shields.io/github/stars/blablabliam/Lightning-Analyzer-GUI.svg?style=for-the-badge
-[stars-url]: https://github.com/blablabliam/Lightning-Analyzer-GUI/stargazers
-[issues-shield]: https://img.shields.io/github/issues/blablabliam/Lightning-Analyzer-GUI.svg?style=for-the-badge
-[issues-url]: https://github.com/blablabliam/Lightning-Analyzer-GUI/issues
-[license-shield]: https://img.shields.io/github/license/blablabliam/Lightning-Analyzer-GUI.svg?style=for-the-badge
-[license-url]: https://github.com/blablabliam/Lightning-Analyzer-GUI/blob/master/LICENSE.txt
+[contributors-shield]: https://img.shields.io/github/contributors/blablabliam/ZapCapture.svg?style=for-the-badge
+[contributors-url]: https://github.com/blablabliam/ZapCapture/graphs/contributors
+[forks-shield]: https://img.shields.io/github/forks/blablabliam/ZapCapture.svg?style=for-the-badge
+[forks-url]: https://github.com/blablabliam/ZapCapture/network/members
+[stars-shield]: https://img.shields.io/github/stars/blablabliam/ZapCapture.svg?style=for-the-badge
+[stars-url]: https://github.com/blablabliam/ZapCapture/stargazers
+[issues-shield]: https://img.shields.io/github/issues/blablabliam/ZapCapture.svg?style=for-the-badge
+[issues-url]: https://github.com/blablabliam/ZapCapture/issues
+[license-shield]: https://img.shields.io/github/license/blablabliam/ZapCapture.svg?style=for-the-badge
+[license-url]: https://github.com/blablabliam/ZapCapture/blob/master/LICENSE.txt

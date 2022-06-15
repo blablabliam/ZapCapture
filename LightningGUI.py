@@ -6,12 +6,12 @@ __version__ = "2"
 __maintainer__ = "Liam Plybon"
 __email__ = "lplybon1@gmail.com"
 __status__ = "Prototype"
-__date__ = "5-19-2022"
+__date__ = "6-14-2022"
 
 import sys
 import time
 import os
-#tkinter required for pyinstaller
+# tkinter required for pyinstaller
 import tkinter
 from PIL import Image, ImageTk
 import cv2
@@ -53,7 +53,7 @@ global output_folder
 output_folder = 'No Folder Chosen'
 global threshold
 threshold = '5000000'
-#buttonstate determines output file name type.
+# buttonstate determines output file name type.
 global buttonState
 buttonState = True
 
@@ -77,7 +77,7 @@ def error_popup(message):
     msg.setText("Error")
     msg.setInformativeText(str(message))
     msg.setWindowTitle("Lightning Analysis Error")
-    #prevents crash after closing message box
+    # prevents crash after closing message box
     msg.setAttribute(Qt.WA_DeleteOnClose)
     msg.exec_()
 
@@ -88,7 +88,7 @@ def info_popup(message):
     msg.setText("Analysis Complete!")
     msg.setInformativeText(str(message))
     msg.setWindowTitle("Lightning Analysis Complete")
-    #prevents crash after closing message box
+    # prevents crash after closing message box
     msg.setAttribute(Qt.WA_DeleteOnClose)
     msg.exec_()
 
@@ -114,7 +114,7 @@ class Worker(QObject):
         # set framecount, strike counter to zero before looping all frames
         frame_count = 0
         strikes = 0
-        #set progress bar to 10 so people know it is working
+        # set progress bar to 10 so people know it is working
         self.threadProgress.emit(10)
         try:
             # error if the folder is invalid. Check folder for verification.
@@ -127,23 +127,33 @@ class Worker(QObject):
             return
         try:
             # determine if the output folder is valid
+            print('asdf')
             path, dirs, files = next(os.walk(out_folder))
             outfilecount = len(files)
-            #set per file progress bar quantity
-            per_file = 90/(outfilecount)
         except:
             error_popup('Output folder not valid. Select a valid folder.')
             self.threadProgress.emit(0)
             self.finished.emit()
             return
-        #create frame and gif directories
-        impath = os.path.join(out_folder,'frames/')
+        # create frame and gif directories after checking for existence
+        impath = os.path.join(out_folder, 'frames/')
         gifpath = os.path.join(out_folder, 'gifs/')
-        os.mkdir(impath)
-        os.mkdir(gifpath)
+        if not os.path.isdir(impath):
+            os.mkdir(impath)
+        if not os.path.isdir(gifpath):
+            os.mkdir(gifpath)
+        # get the current directory files count. If the outfolder is the same
+        # as the infolder, this might have changed after creating the output
+        # folders above.
+        path, dirs, files = next(os.walk(in_folder))
+        filecount = len(files)+len(dirs)
+        # set per file progress bar quantity
+        per_file = 90/(filecount)
+        print('asdf')
         for index, filename in enumerate(os.listdir(in_folder)):
             # itterates over files in directory
             # f_in and f_out control input and destination targets
+            print(filename)
             try:
                 file_base = 10 + index*per_file
                 completion = file_base
@@ -160,6 +170,7 @@ class Worker(QObject):
                 print('video lib error?')
                 return
             # gets statistics on current video
+            print('asdf')
             nframes = (int)(video.get(cv2.CAP_PROP_FRAME_COUNT))
             width = (int)(video.get(cv2.CAP_PROP_FRAME_WIDTH))
             height = (int)(video.get(cv2.CAP_PROP_FRAME_HEIGHT))
@@ -170,12 +181,12 @@ class Worker(QObject):
             frame_size = "Frame size: " + str(width) + str(height) + '\n'
             total_frames = "Total frames: " + str(nframes) + '\n'
             video_fps = "Fps: " + str(fps) + '\n'
-            #print(frame_size)
-            #print(total_frames)
-            #print(video_fps)
-            #checks if input is an actual video before opening csv.
+            # print(frame_size)
+            # print(total_frames)
+            # print(video_fps)
+            # checks if input is an actual video before opening csv.
             # opens csv for statistics- might want to disable for production.
-            if fps==0 or nframes==1:
+            if fps == 0 or nframes == 1:
                 print('zerofps or image!')
                 continue
             fff = open(f_out+".csv", 'w')
@@ -186,8 +197,9 @@ class Worker(QObject):
             # creates list for gif frames
             gif_frames = []
             gif_name = ''
-            #strike counter independent for file. Helps with writing gifs.
+            # strike counter independent for file. Helps with writing gifs.
             file_strikes = 0
+            print('asdf')
             for i in range(nframes-1):
                 # loops through all of the frames, looking for strikes.
                 # itterate progress bar
@@ -197,24 +209,24 @@ class Worker(QObject):
                 # process the video
                 flag, frame1 = video.read()
                 diff1 = count_diff(frame0, frame1)
-                #checks for file output name system
-                #names files and gifs respectively.
-                if not buttonState and type(fps)==int:
-                    timestamp = str(round(int(i)/int(fps), 2)).replace('.','-')
+                # checks for file output name system
+                # names files and gifs respectively.
+                if not buttonState and type(fps) == int:
+                    timestamp = str(round(int(i)/int(fps), 2)).replace('.', '-')
                     imname = impath + '/' + str(filename) + str(timestamp) + '.png'
                     gifname = gifpath + '/' + str(filename) + str(timestamp) + '.gif'
                 else:
                     imname = impath + str(filename) + "_%06d.jpg" % i
-                    gifname = gifpath + str(filename) +  "_%06d.gif" % i
+                    gifname = gifpath + str(filename) + "_%06d.gif" % i
 
                 if diff1 > threshold_integer:
                     # pass condition to save a frame and start a save state
                     strikes = strikes + 1
                     file_strikes = file_strikes + 1
                     gif_name = gifname
-                    #write previous gif list to a gif if not the second frame
-                    #and the deadzone is already zero (ie lightning has already
-                    #struck and the gif buffer contains frames).
+                    # write previous gif list to a gif if not the second frame
+                    # and the deadzone is already zero (ie lightning has already
+                    # struck and the gif buffer contains frames).
                     if deadzone == 0 and file_strikes > 1:
                         gif_start_frame = gif_frames[0]
                         gif_frames.pop(0)
@@ -222,7 +234,7 @@ class Worker(QObject):
                             for idx, frame in enumerate(gif_frames):
                                 rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                                 writer.append_data(rgb_frame)
-                        gif_frames=[]
+                        gif_frames = []
                     # deadzone must be an int > 0 to save an image.
                     deadzone = 3
                     gif_name = gifname
@@ -236,11 +248,10 @@ class Worker(QObject):
                         deadzone = deadzone - 1
 
                 if deadzone > 0:
-                    #save frame for passing the deadzone condition.
+                    # save frame for passing the deadzone condition.
                     cv2.imwrite(imname, frame1)
-                    #save frame to list for writing to gif
+                    # save frame to list for writing to gif
                     gif_frames.append(frame1)
-
 
                 text = str(f_out)+', '+str(diff1)
                 # print text to csv
@@ -249,27 +260,30 @@ class Worker(QObject):
                 # pass frame forward
                 frame0 = frame1
                 if i == nframes-1 and not gif_frames[0]:
-                    #saves a gif at the end of a file
+                    # saves a gif at the end of a file
                     gif_start_frame = gif_frames[0]
                     gif_frames.pop(0)
                     with imageio.get_writer(gif_name, mode="I") as writer:
                         for idx, frame in enumerate(gif_frames):
                             rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                             writer.append_data(rgb_frame)
-                    gif_frames=[]
+                    gif_frames = []
                     deadzone = 0
         print('analysisdone')
+        self.threadProgress.emit(100)
         fff.close()
         # statistics
-        video_strikes = 'Strikes: '+ str(strikes) + '\n'
+        video_strikes = 'Strikes: ' + str(strikes) + '\n'
         elapsed_time = 'Process Time: ' + str(int(time.time() - start)) + ' s\n'
-        #print(video_strikes)
-        #print(elapsed_time)
+        # print(video_strikes)
+        # print(elapsed_time)
         info = video_strikes+elapsed_time
-        #attempting to fix crash error after accnowledging popup.
-        info_popup(info)
-        #sends finished signal. Essentially terminates the thread.
-        self.threadProgress.emit(100)
+        # looks like calling popups from this thread can cause crashes.
+        # For stability, I am removing the info popup. Error popups will be left
+        # for now, but need to be fixed.
+
+        # info_popup(info)
+        # sends finished signal. Essentially terminates the thread.
         self.finished.emit()
 
 
@@ -287,7 +301,7 @@ class Window(QMainWindow):
         self.centralWidget = QWidget()
         self.setCentralWidget(self.centralWidget)
         # Create and connect widgets
-        #directory widgets
+        # directory widgets
         self.inputFileDirectoryButton = QPushButton("Select Input Directory", self)
         self.inputFileDirectoryButton.clicked.connect(self.pick_new_input)
         self.inputFileDirectoryLabel = QLabel(input_folder)
@@ -296,17 +310,19 @@ class Window(QMainWindow):
         self.outputFileDirectoryButton.clicked.connect(self.pick_new_output)
         self.outputFileDirectoryLabel = QLabel(output_folder)
         self.outputFileDirectoryLabel.setAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
-        #file name widgets
+        # file name widgets
         self.outputFilenameLabel = QLabel('Output File Name (❓)')
         self.outputFilenameLabel.setAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
-        self.outputFilenameLabel.setToolTip('Output File Name determines the standard used to give a file name. Frame number will output files as an integer, while timestamp will output files as a timestamp.')
+        self.outputFilenameLabel.setToolTip(
+            'Output File Name determines the standard used to give a file name. Frame number will output files as an integer, while timestamp will output files as a timestamp.')
         self.outputFrameNumButton = QRadioButton("Frame Number")
         self.outputFrameNumButton.setChecked(True)
-        self.outputFrameNumButton.toggled.connect(lambda:self.btnstate(self.outputFrameNumButton))
+        self.outputFrameNumButton.toggled.connect(lambda: self.btnstate(self.outputFrameNumButton))
         self.outputTimestampButton = QRadioButton("Timestamp")
         self.outputTimestampButton.setChecked(False)
-        self.outputTimestampButton.toggled.connect(lambda:self.btnstate(self.outputTimestampButton))
-        #threshold widget
+        self.outputTimestampButton.toggled.connect(
+            lambda: self.btnstate(self.outputTimestampButton))
+        # threshold widget
         self.thresholdLabel = QLabel("Threshold (❓)", self)
         self.thresholdLabel.setAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
         self.thresholdLabel.setToolTip('Threshold determines the sensitivity of the computer vision algorithm. High thresholds will execute quickly with few output images, while low thresholds will potentially detect every frame of the video as a lightning event. Each video in your folder may need an individually tuned threshold; in this case, make subfolders for videos from the same camera and event. For example, separate your dash-cam footage and stationary camera footage. Nighttime footage can require thresholds aroung 10 million, while daytime footage can be as low as 10 thousand.')
@@ -343,7 +359,7 @@ class Window(QMainWindow):
         global input_folder
         input_folder = str(folder_path)
         self.inputFileDirectoryLabel.setText(str(folder_path))
-        #reset the progress bar to 0
+        # reset the progress bar to 0
         self.progressBar.setValue(0)
         self.analysisButton.setEnabled(True)
 
@@ -353,7 +369,7 @@ class Window(QMainWindow):
         global output_folder
         output_folder = str(folder_path)
         self.outputFileDirectoryLabel.setText(str(folder_path))
-        #reset the progress bar to 0
+        # reset the progress bar to 0
         self.progressBar.setValue(0)
         self.analysisButton.setEnabled(True)
 
@@ -366,7 +382,6 @@ class Window(QMainWindow):
             else:
                 buttonState = False
                 print(b.text()+" is deselected")
-
 
     def runLongTask(self):
         # set the threshold
@@ -401,8 +416,6 @@ class Window(QMainWindow):
 
     def enableAnalysisButton(self):
         self.analysisButton.setEnabled(True)
-
-
 
 
 app = QApplication(sys.argv)
