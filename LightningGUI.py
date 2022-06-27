@@ -1,15 +1,15 @@
 __author__ = "Liam Plybon (blablabliam.github.io)"
 __copyright__ = "Copyright 2022, Liam Plybon"
-__credits__ = ["Saulius Lukse", "Drake Anthony (Styropyro)"]
+__credits__ = ["Saulius Lukse", "Drake Anthony (Styropyro)", "Stephen C Hummel"]
 __license__ = "MIT"
 __version__ = "2"
 __maintainer__ = "Liam Plybon"
 __email__ = "lplybon1@gmail.com"
 __status__ = "Prototype"
-__date__ = "6-14-2022"
+__date__ = "6-16-2022"
 
 import sys
-import time
+#import time
 import os
 # tkinter required for pyinstaller
 import tkinter
@@ -43,6 +43,8 @@ from PySide2.QtGui import (
 SCALE = 0.5
 NOISE_CUTOFF = 5
 BLUR_SIZE = 3
+END_STRIKE_PERCENTAGE = .9
+GIF_FRAMES_LIMIT = 100
 # input, output, and threshold are manipulated by the directory select buttons
 # this allows them to pass into the worker thread without slots and signals.
 # as such they are used as global variables
@@ -72,6 +74,8 @@ def count_diff(img1, img2):
 
 
 def error_popup(message):
+    '''Might cause a crash, but since it is for errors I am less inclined to worry.'''
+    print(message)
     msg = QMessageBox()
     msg.setIcon(QMessageBox.Warning)
     msg.setText("Error")
@@ -81,17 +85,26 @@ def error_popup(message):
     msg.setAttribute(Qt.WA_DeleteOnClose)
     msg.exec_()
 
+# Popup for info after analysis. Caused crashes when started from
+# the analysis thread rather than the main thread.
+# Might reintroduce one day, since it provides nice information.
 
-def info_popup(message):
-    msg = QMessageBox()
-    msg.setIcon(QMessageBox.Information)
-    msg.setText("Analysis Complete!")
-    msg.setInformativeText(str(message))
-    msg.setWindowTitle("Lightning Analysis Complete")
-    # prevents crash after closing message box
-    msg.setAttribute(Qt.WA_DeleteOnClose)
-    msg.exec_()
+# def info_popup(message):
+#     msg = QMessageBox()
+#     msg.setIcon(QMessageBox.Information)
+#     msg.setText("Analysis Complete!")
+#     msg.setInformativeText(str(message))
+#     msg.setWindowTitle("Lightning Analysis Complete")
+#     # prevents crash after closing message box
+#     msg.setAttribute(Qt.WA_DeleteOnClose)
+#     msg.exec_()
 
+class HyperlinkLable(QLabel):
+    def __init__(self, parent=None):
+        super().__init__()
+        #self.setStyleSheet('font-size: 35px')
+        self.setOpenExternalLinks(True)
+        self.setParent(parent)
 
 class Worker(QObject):
     # worker thread for the analysis.
@@ -99,10 +112,9 @@ class Worker(QObject):
     threadProgress = Signal(int)
 
     def run(self):
-        """Long-running task."""
+        """Analyzes lightning. """
         # Launches analysis of the videos in the in directory.
-        # In future, this needs to have error handling.
-        # For now, it is fine without it.
+        print('Started Analysis!')
         global input_folder
         global output_folder
         global threshold
@@ -110,7 +122,6 @@ class Worker(QObject):
         in_folder = input_folder
         out_folder = output_folder
         threshold_integer = int(threshold)
-        start = time.time()
         # set framecount, strike counter to zero before looping all frames
         frame_count = 0
         strikes = 0
@@ -127,7 +138,6 @@ class Worker(QObject):
             return
         try:
             # determine if the output folder is valid
-            print('asdf')
             path, dirs, files = next(os.walk(out_folder))
             outfilecount = len(files)
         except:
@@ -149,11 +159,10 @@ class Worker(QObject):
         filecount = len(files)+len(dirs)
         # set per file progress bar quantity
         per_file = 90/(filecount)
-        print('asdf')
         for index, filename in enumerate(os.listdir(in_folder)):
             # itterates over files in directory
             # f_in and f_out control input and destination targets
-            print(filename)
+            print('Processing ' + filename)
             try:
                 file_base = 10 + index*per_file
                 completion = file_base
@@ -170,7 +179,6 @@ class Worker(QObject):
                 print('video lib error?')
                 return
             # gets statistics on current video
-            print('asdf')
             nframes = (int)(video.get(cv2.CAP_PROP_FRAME_COUNT))
             width = (int)(video.get(cv2.CAP_PROP_FRAME_WIDTH))
             height = (int)(video.get(cv2.CAP_PROP_FRAME_HEIGHT))
@@ -192,6 +200,10 @@ class Worker(QObject):
             fff = open(f_out+".csv", 'w')
             # reads the video out to give a frame and flag
             flag, frame0 = video.read()
+            # Set video codec.
+            print("setting codec mp4v")
+            fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+            print("codec successful!")
             # savestate for using the deadzone.
             deadzone = 0
             # creates list for gif frames
@@ -199,7 +211,8 @@ class Worker(QObject):
             gif_name = ''
             # strike counter independent for file. Helps with writing gifs.
             file_strikes = 0
-            print('asdf')
+            # remove filename period, so that the output files don't confuse anything.
+            filename = filename.replace('.', '_')
             for i in range(nframes-1):
                 # loops through all of the frames, looking for strikes.
                 # itterate progress bar
@@ -214,11 +227,14 @@ class Worker(QObject):
                 if not buttonState and type(fps) == int:
                     timestamp = str(round(int(i)/int(fps), 2)).replace('.', '-')
                     imname = impath + '/' + str(filename) + str(timestamp) + '.png'
-                    gifname = gifpath + '/' + str(filename) + str(timestamp) + '.gif'
+                    gifname = gifpath + '/' + str(filename) + str(timestamp) + '.mp4'
                 else:
-                    imname = impath + str(filename) + "_%06d.jpg" % i
-                    gifname = gifpath + str(filename) + "_%06d.gif" % i
-
+                    imname = impath + str(filename) + "_%06d.png" % i
+                    gifname = gifpath + str(filename) + "_%06d.mp4" % i
+                if len(gif_frames) == GIF_FRAMES_LIMIT:
+                    # end a gif if the clip gets large to prevent computer issues.
+                    # massive gifs can cause lag and other problems.
+                    deadzone = 0
                 if diff1 > threshold_integer:
                     # pass condition to save a frame and start a save state
                     strikes = strikes + 1
@@ -230,20 +246,25 @@ class Worker(QObject):
                     if deadzone == 0 and file_strikes > 1:
                         gif_start_frame = gif_frames[0]
                         gif_frames.pop(0)
-                        with imageio.get_writer(gif_name, mode="I") as writer:
-                            for idx, frame in enumerate(gif_frames):
-                                rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                                writer.append_data(rgb_frame)
+                        print('setting writer')
+                        out = cv2.VideoWriter(gif_name, fourcc, 4.0, (width,height))
+                        for idx, frame in enumerate(gif_frames):
+                            print('writing frame')
+                            out.write(frame)
+                            print('wrote frame')
+                        out.release()
                         gif_frames = []
                     # deadzone must be an int > 0 to save an image.
                     deadzone = 3
                     gif_name = gifname
 
-                if diff1 < threshold_integer/100:
+                if diff1 < threshold_integer*END_STRIKE_PERCENTAGE:
                     # itterates deadzone to zero, leaving deadzone condition.
-                    # if the diff is less than 1% of the threshold, the
+                    # if the diff is less than the end strike percentage, the
                     # deadzone is reduced by 1. Deadzone of 0 will result
                     # in not saving the frame.
+                    #end strike percentage set in the initial constants.
+                    #still need to find the sweet spot between 1% and 30%.
                     if deadzone > 0:
                         deadzone = deadzone - 1
 
@@ -254,7 +275,7 @@ class Worker(QObject):
                     gif_frames.append(frame1)
 
                 text = str(f_out)+', '+str(diff1)
-                # print text to csv
+                # write threshold data to csv
                 fff.write(text + '\n')
                 fff.flush()
                 # pass frame forward
@@ -263,21 +284,24 @@ class Worker(QObject):
                     # saves a gif at the end of a file
                     gif_start_frame = gif_frames[0]
                     gif_frames.pop(0)
-                    with imageio.get_writer(gif_name, mode="I") as writer:
-                        for idx, frame in enumerate(gif_frames):
-                            rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                            writer.append_data(rgb_frame)
+                    print('setting writer')
+                    out = cv2.VideoWriter(gif_name, fourcc, 4.0, (width,height))
+                    for idx, frame in enumerate(gif_frames):
+                        print('writing frame')
+                        out.write(frame)
+                        print('wrote frame')
+                    out.release()
                     gif_frames = []
                     deadzone = 0
-        print('analysisdone')
         self.threadProgress.emit(100)
         fff.close()
-        # statistics
-        video_strikes = 'Strikes: ' + str(strikes) + '\n'
-        elapsed_time = 'Process Time: ' + str(int(time.time() - start)) + ' s\n'
+        print('analysis complete!')
+        # statistics for nerds!
+        # video_strikes = 'Strikes: ' + str(strikes) + '\n'
+        # elapsed_time = 'Process Time: ' + str(int(time.time() - start)) + ' s\n'
         # print(video_strikes)
         # print(elapsed_time)
-        info = video_strikes+elapsed_time
+        # info = video_strikes+elapsed_time
         # looks like calling popups from this thread can cause crashes.
         # For stability, I am removing the info popup. Error popups will be left
         # for now, but need to be fixed.
@@ -290,9 +314,7 @@ class Worker(QObject):
 class Window(QMainWindow):
     def __init__(self, parent=None):
         super().__init__(parent)
-        #self.clicksCount = 0
         self.setupUi()
-        # self.setIcon()
 
     def setupUi(self):
         # sets up the gui layout itself
@@ -337,6 +359,11 @@ class Window(QMainWindow):
         self.progressBar.setAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
         #self.progressBar.setGeometry(200, 80, 250, 20)
         self.progressBar.setValue(0)
+        # monetization to prevent starvation
+        linkTemplate = '<a href={0}>{1}</a>'
+        self.starvationButton = HyperlinkLable(self)
+        starvationMessage = '''Like ZapCapture? Consider buying me a coffee!'''
+        self.starvationButton.setText(linkTemplate.format('https://www.buymeacoffee.com/Blablabliam', starvationMessage))
 
         # Set the layout
         layout = QVBoxLayout()
@@ -351,6 +378,7 @@ class Window(QMainWindow):
         layout.addWidget(self.thresholdEntry)
         layout.addWidget(self.analysisButton)
         layout.addWidget(self.progressBar)
+        layout.addWidget(self.starvationButton)
         self.centralWidget.setLayout(layout)
 
     def pick_new_input(self):
