@@ -1,59 +1,69 @@
-# Original code developed for Python 2.7 by Saulius Lukse
-# Translated to Python 3 by Liam Plybon (2022)
-# Venv should include OpenCV, Pyinstaller, and Pillow.
-# Current venv is LightningVenv on home directory.
-__author__ = "Liam Plybon"
+__author__ = "Liam Plybon (blablabliam.github.io)"
 __copyright__ = "Copyright 2022, Liam Plybon"
-__credits__ = ["Saulius Lukse", "Drake Anthony (Styropyro)"]
+__credits__ = ["Saulius Lukse", "Drake Anthony (Styropyro)", "Stephen C Hummel"]
 __license__ = "MIT"
-__version__ = "1"
+__version__ = "2"
 __maintainer__ = "Liam Plybon"
 __email__ = "lplybon1@gmail.com"
-__status__ = "Production"
-__date__ = "4-14-2022"
+__status__ = "Prototype"
+__date__ = "6-16-2022"
 
-from tkinter import *
-from tkinter import filedialog
-from tkinter import ttk
 import sys
-import cv2
-import numpy as np
-from PIL import Image, ImageTk
-import time
+#import time
 import os
+# tkinter required for pyinstaller
+import tkinter
+from PIL import Image, ImageTk
+import cv2
+import imageio
 
-# hardcoded values for  computer vision
+# imports for gui interface
+from PySide2.QtCore import Qt, QObject, QThread, Signal, Slot
+from PySide2.QtWidgets import (
+    QApplication,
+    QLabel,
+    QMainWindow,
+    QPushButton,
+    QRadioButton,
+    QVBoxLayout,
+    QWidget,
+    QFileDialog,
+    QLineEdit,
+    QProgressBar,
+    QMessageBox
+)
+from PySide2.QtGui import (
+    QPalette,
+    QColor,
+    QIntValidator,
+    QIcon
+)
+
+#global constants
 SCALE = 0.5
 NOISE_CUTOFF = 5
 BLUR_SIZE = 3
-
-
-def browse_button_in():
-    # Allow user to select a directory and store it in global var
-    # called folder_path_in
-    # This function is called by the input directory button.
-    global folder_path_in
-    filename = filedialog.askdirectory()
-    folder_path_in.set(filename)
-    print(filename)
-
-
-def browse_button_out():
-    # Allow user to select a directory and store it in global var
-    # called folder_path_out
-    # This function is called by the output directory button.
-    global folder_path_out
-    filename = filedialog.askdirectory()
-    folder_path_out.set(filename)
-    print(filename)
+END_STRIKE_PERCENTAGE = .9
+GIF_FRAMES_LIMIT = 100
+# input, output, and threshold are manipulated by the directory select buttons
+# this allows them to pass into the worker thread without slots and signals.
+# as such they are used as global variables
+# for clarity, all globals are redefined as global wherever used.
+global input_folder
+input_folder = 'No Folder Chosen'
+global output_folder
+output_folder = 'No Folder Chosen'
+global threshold
+threshold = '5000000'
+# buttonstate determines output file name type.
+global buttonState
+buttonState = True
 
 
 def count_diff(img1, img2):
     # Finds a difference between a frame and the frame before it.
     small1 = cv2.resize(img1, (0, 0), fx=SCALE, fy=SCALE)
     small2 = cv2.resize(img2, (0, 0), fx=SCALE, fy=SCALE)
-    #cv2.imshow('frame', small2)
-    # cv2.waitKey(1)
     diff = cv2.absdiff(small1, small2)
     diff = cv2.cvtColor(diff, cv2.COLOR_RGB2GRAY)
     frame_delta1 = cv2.threshold(diff, NOISE_CUTOFF, 255, 3)[1]
@@ -63,152 +73,403 @@ def count_diff(img1, img2):
     return delta_count1
 
 
-def execute_analysis():
-    # Launches analysis of the videos in the in directory.
-    # In future, this needs to have error handling.
-    # For now, it is fine without it.
-    start = time.time()
-    in_folder = folder_path_in.get()
-    out_folder = folder_path_out.get()
-    threshold = int(thresholdsetpoint.get())
-    print(threshold)
-    # print(in_folder, out_folder)
-    # set framecount, strike counter to zero before looping all frames
-    frame_count = 0
-    strikes = 0
-    for filename in os.listdir(in_folder):
-        # itterates over files in directory
-        # f_in and f_out control input and destination targets
-        f_in = os.path.join(in_folder, filename)
-        f_out = os.path.join(out_folder, filename)
-        video = cv2.VideoCapture(f_in)
-        # gets statistics on current video
-        nframes = (int)(video.get(cv2.CAP_PROP_FRAME_COUNT))
-        width = (int)(video.get(cv2.CAP_PROP_FRAME_WIDTH))
-        height = (int)(video.get(cv2.CAP_PROP_FRAME_HEIGHT))
-        fps = (int)(video.get(cv2.CAP_PROP_FPS))
-        # video diagnostics printout for user ease.
-        # Might incorporate into visible log at later date
-        print(str(f_in))
-        print("[i] Frame size: ", width, height)
-        print("[i] Total frames:", nframes)
-        print("[i] Fps:", fps)
-        # opens csv for statistics- might want to disable for production.
-        fff = open(f_out+".csv", 'w')
-        # reads the video out to give a frame and flag
-        flag, frame0 = video.read()
-        for i in range(nframes-1):
-            # loops through all of the frames, looking for strikes.
-            flag, frame1 = video.read()
-            diff1 = count_diff(frame0, frame1)
-            name = f_out+"_%06d.jpg" % i
+def error_popup(message):
+    '''Might cause a crash, but since it is for errors I am less inclined to worry.'''
+    print(message)
+    msg = QMessageBox()
+    msg.setIcon(QMessageBox.Warning)
+    msg.setText("Error")
+    msg.setInformativeText(str(message))
+    msg.setWindowTitle("Lightning Analysis Error")
+    # prevents crash after closing message box
+    msg.setAttribute(Qt.WA_DeleteOnClose)
+    msg.exec_()
 
-            if diff1 > threshold:
-                # pass condition
-                cv2.imwrite(name, frame1)
-                strikes = strikes + 1
+# Popup for info after analysis. Caused crashes when started from
+# the analysis thread rather than the main thread.
+# Might reintroduce one day, since it provides nice information.
 
-            text = str(f_out)+', '+str(diff1)
-            # print text to csv
-            fff.write(text + '\n')
-            fff.flush()
-            # pass frame forward
-            frame0 = frame1
-    fff.close()
-    #statistics
-    print('[i] Strikes: ', strikes)
-    print('[i] elapsed time:', time.time() - start)
-    print('analyzed! ')
+# def info_popup(message):
+#     msg = QMessageBox()
+#     msg.setIcon(QMessageBox.Information)
+#     msg.setText("Analysis Complete!")
+#     msg.setInformativeText(str(message))
+#     msg.setWindowTitle("Lightning Analysis Complete")
+#     # prevents crash after closing message box
+#     msg.setAttribute(Qt.WA_DeleteOnClose)
+#     msg.exec_()
+
+class HyperlinkLable(QLabel):
+    def __init__(self, parent=None):
+        super().__init__()
+        #self.setStyleSheet('font-size: 35px')
+        self.setOpenExternalLinks(True)
+        self.setParent(parent)
+
+class Worker(QObject):
+    # worker thread for the analysis.
+    finished = Signal()
+    threadProgress = Signal(int)
+
+    def run(self):
+        """Analyzes lightning. """
+        # Launches analysis of the videos in the in directory.
+        print('Started Analysis!')
+        global input_folder
+        global output_folder
+        global threshold
+        global buttonState
+        in_folder = input_folder
+        out_folder = output_folder
+        threshold_integer = int(threshold)
+        # set framecount, strike counter to zero before looping all frames
+        frame_count = 0
+        strikes = 0
+        # set progress bar to 10 so people know it is working
+        self.threadProgress.emit(10)
+        try:
+            # error if the folder is invalid. Check folder for verification.
+            path, dirs, files = next(os.walk(in_folder))
+            filecount = len(files)
+        except:
+            error_popup('Input folder not valid. Select a valid folder.')
+            self.threadProgress.emit(0)
+            self.finished.emit()
+            return
+        try:
+            # determine if the output folder is valid
+            path, dirs, files = next(os.walk(out_folder))
+            outfilecount = len(files)
+        except:
+            error_popup('Output folder not valid. Select a valid folder.')
+            self.threadProgress.emit(0)
+            self.finished.emit()
+            return
+        # create frame and gif directories after checking for existence
+        impath = os.path.join(out_folder, 'frames/')
+        gifpath = os.path.join(out_folder, 'gifs/')
+        if not os.path.isdir(impath):
+            os.mkdir(impath)
+        if not os.path.isdir(gifpath):
+            os.mkdir(gifpath)
+        # get the current directory files count. If the outfolder is the same
+        # as the infolder, this might have changed after creating the output
+        # folders above.
+        path, dirs, files = next(os.walk(in_folder))
+        filecount = len(files)+len(dirs)
+        # set per file progress bar quantity
+        per_file = 90/(filecount)
+        for index, filename in enumerate(os.listdir(in_folder)):
+            # itterates over files in directory
+            # f_in and f_out control input and destination targets
+            print('Processing ' + filename)
+            try:
+                file_base = 10 + index*per_file
+                completion = file_base
+            except:
+                self.threadProgress.emit(0)
+                self.finished.emit()
+                return
+            self.threadProgress.emit(completion)
+            f_in = os.path.join(in_folder, filename)
+            f_out = os.path.join(out_folder, filename)
+            try:
+                video = cv2.VideoCapture(f_in)
+            except:
+                print('video lib error?')
+                return
+            # gets statistics on current video
+            nframes = (int)(video.get(cv2.CAP_PROP_FRAME_COUNT))
+            width = (int)(video.get(cv2.CAP_PROP_FRAME_WIDTH))
+            height = (int)(video.get(cv2.CAP_PROP_FRAME_HEIGHT))
+            fps = (int)(video.get(cv2.CAP_PROP_FPS))
+            #print('FPS is '+ str(fps))
+            # video diagnostics printout for user ease.
+            # Might incorporate into visible log at later date
+            frame_size = "Frame size: " + str(width) + str(height) + '\n'
+            total_frames = "Total frames: " + str(nframes) + '\n'
+            video_fps = "Fps: " + str(fps) + '\n'
+            # print(frame_size)
+            # print(total_frames)
+            # print(video_fps)
+            # checks if input is an actual video before opening csv.
+            # opens csv for statistics- might want to disable for production.
+            if fps == 0 or nframes == 1:
+                print('zerofps or image!')
+                continue
+            fff = open(f_out+".csv", 'w')
+            # reads the video out to give a frame and flag
+            flag, frame0 = video.read()
+            # Set video codec.
+            print("setting codec mp4v")
+            fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+            print("codec successful!")
+            # savestate for using the deadzone.
+            deadzone = 0
+            # creates list for gif frames
+            gif_frames = []
+            gif_name = ''
+            # strike counter independent for file. Helps with writing gifs.
+            file_strikes = 0
+            # remove filename period, so that the output files don't confuse anything.
+            filename = filename.replace('.', '_')
+            for i in range(nframes-1):
+                # loops through all of the frames, looking for strikes.
+                # itterate progress bar
+                file_cap = (i/(nframes+1))*per_file
+                file_completion = file_base + file_cap
+                self.threadProgress.emit(file_completion)
+                # process the video
+                flag, frame1 = video.read()
+                diff1 = count_diff(frame0, frame1)
+                # checks for file output name system
+                # names files and gifs respectively.
+                if not buttonState and type(fps) == int:
+                    timestamp = str(round(int(i)/int(fps), 2)).replace('.', '-')
+                    imname = impath + '/' + str(filename) + str(timestamp) + '.png'
+                    gifname = gifpath + '/' + str(filename) + str(timestamp) + '.mp4'
+                else:
+                    imname = impath + str(filename) + "_%06d.png" % i
+                    gifname = gifpath + str(filename) + "_%06d.mp4" % i
+                if len(gif_frames) == GIF_FRAMES_LIMIT:
+                    # end a gif if the clip gets large to prevent computer issues.
+                    # massive gifs can cause lag and other problems.
+                    deadzone = 0
+                if diff1 > threshold_integer:
+                    # pass condition to save a frame and start a save state
+                    strikes = strikes + 1
+                    file_strikes = file_strikes + 1
+                    gif_name = gifname
+                    # write previous gif list to a gif if not the second frame
+                    # and the deadzone is already zero (ie lightning has already
+                    # struck and the gif buffer contains frames).
+                    if deadzone == 0 and file_strikes > 1:
+                        gif_start_frame = gif_frames[0]
+                        gif_frames.pop(0)
+                        print('setting writer')
+                        out = cv2.VideoWriter(gif_name, fourcc, 4.0, (width,height))
+                        for idx, frame in enumerate(gif_frames):
+                            print('writing frame')
+                            out.write(frame)
+                            print('wrote frame')
+                        out.release()
+                        gif_frames = []
+                    # deadzone must be an int > 0 to save an image.
+                    deadzone = 3
+                    gif_name = gifname
+
+                if diff1 < threshold_integer*END_STRIKE_PERCENTAGE:
+                    # itterates deadzone to zero, leaving deadzone condition.
+                    # if the diff is less than the end strike percentage, the
+                    # deadzone is reduced by 1. Deadzone of 0 will result
+                    # in not saving the frame.
+                    #end strike percentage set in the initial constants.
+                    #still need to find the sweet spot between 1% and 30%.
+                    if deadzone > 0:
+                        deadzone = deadzone - 1
+
+                if deadzone > 0:
+                    # save frame for passing the deadzone condition.
+                    cv2.imwrite(imname, frame1)
+                    # save frame to list for writing to gif
+                    gif_frames.append(frame1)
+
+                text = str(f_out)+', '+str(diff1)
+                # write threshold data to csv
+                fff.write(text + '\n')
+                fff.flush()
+                # pass frame forward
+                frame0 = frame1
+                if i == nframes-1 and not gif_frames[0]:
+                    # saves a gif at the end of a file
+                    gif_start_frame = gif_frames[0]
+                    gif_frames.pop(0)
+                    print('setting writer')
+                    out = cv2.VideoWriter(gif_name, fourcc, 4.0, (width,height))
+                    for idx, frame in enumerate(gif_frames):
+                        print('writing frame')
+                        out.write(frame)
+                        print('wrote frame')
+                    out.release()
+                    gif_frames = []
+                    deadzone = 0
+        self.threadProgress.emit(100)
+        fff.close()
+        print('analysis complete!')
+        # statistics for nerds!
+        # video_strikes = 'Strikes: ' + str(strikes) + '\n'
+        # elapsed_time = 'Process Time: ' + str(int(time.time() - start)) + ' s\n'
+        # print(video_strikes)
+        # print(elapsed_time)
+        # info = video_strikes+elapsed_time
+        # looks like calling popups from this thread can cause crashes.
+        # For stability, I am removing the info popup. Error popups will be left
+        # for now, but need to be fixed.
+
+        # info_popup(info)
+        # sends finished signal. Essentially terminates the thread.
+        self.finished.emit()
 
 
-# Build window root frame
-root = Tk()
+class Window(QMainWindow):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setupUi()
 
-# beautify tkinter a bit
-root.title("Lightning Bolt Analyzer")
-root.geometry('700x300+1000+300')
-root.resizable(width=False, height=False)
+    def setupUi(self):
+        # sets up the gui layout itself
+        self.setWindowTitle("ZapCapture")
+        self.resize(300, 150)
+        self.centralWidget = QWidget()
+        self.setCentralWidget(self.centralWidget)
+        # Create and connect widgets
+        # directory widgets
+        self.inputFileDirectoryButton = QPushButton("Select Input Directory", self)
+        self.inputFileDirectoryButton.clicked.connect(self.pick_new_input)
+        self.inputFileDirectoryLabel = QLabel(input_folder)
+        self.inputFileDirectoryLabel.setAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
+        self.outputFileDirectoryButton = QPushButton("Select Output Directory", self)
+        self.outputFileDirectoryButton.clicked.connect(self.pick_new_output)
+        self.outputFileDirectoryLabel = QLabel(output_folder)
+        self.outputFileDirectoryLabel.setAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
+        # file name widgets
+        self.outputFilenameLabel = QLabel('Output File Name (❓)')
+        self.outputFilenameLabel.setAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
+        self.outputFilenameLabel.setToolTip(
+            'Output File Name determines the standard used to give a file name. Frame number will output files as an integer, while timestamp will output files as a timestamp.')
+        self.outputFrameNumButton = QRadioButton("Frame Number")
+        self.outputFrameNumButton.setChecked(True)
+        self.outputFrameNumButton.toggled.connect(lambda: self.btnstate(self.outputFrameNumButton))
+        self.outputTimestampButton = QRadioButton("Timestamp")
+        self.outputTimestampButton.setChecked(False)
+        self.outputTimestampButton.toggled.connect(
+            lambda: self.btnstate(self.outputTimestampButton))
+        # threshold widget
+        self.thresholdLabel = QLabel("Threshold (❓)", self)
+        self.thresholdLabel.setAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
+        self.thresholdLabel.setToolTip('Threshold determines the sensitivity of the computer vision algorithm. High thresholds will execute quickly with few output images, while low thresholds will potentially detect every frame of the video as a lightning event. Each video in your folder may need an individually tuned threshold; in this case, make subfolders for videos from the same camera and event. For example, separate your dash-cam footage and stationary camera footage. Nighttime footage can require thresholds aroung 10 million, while daytime footage can be as low as 10 thousand.')
+        self.thresholdEntry = QLineEdit(threshold)
+        # restricts the threshold to be numbers only
+        self.onlyInt = QIntValidator()
+        self.thresholdEntry.setValidator(self.onlyInt)
+        self.analysisButton = QPushButton('Perform Analysis', self)
+        # self.analysisButton.clicked.connect(self.analysis)
+        self.analysisButton.clicked.connect(self.runLongTask)
+        self.progressBar = QProgressBar(self)
+        self.progressBar.setAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
+        #self.progressBar.setGeometry(200, 80, 250, 20)
+        self.progressBar.setValue(0)
+        # monetization to prevent starvation
+        linkTemplate = '<a href={0}>{1}</a>'
+        self.starvationButton = HyperlinkLable(self)
+        starvationMessage = '''Like ZapCapture? Consider buying me a coffee!'''
+        self.starvationButton.setText(linkTemplate.format('https://www.buymeacoffee.com/Blablabliam', starvationMessage))
 
-# add background lightning - kinda ugly but works for now
-bg = PhotoImage(file="assets/background.gif")
-background_image = bg
-background_label = Label(root, image=background_image)
-background_label.place(x=0, y=0, relwidth=1, relheight=1)
+        # Set the layout
+        layout = QVBoxLayout()
+        layout.addWidget(self.inputFileDirectoryButton)
+        layout.addWidget(self.inputFileDirectoryLabel)
+        layout.addWidget(self.outputFileDirectoryButton)
+        layout.addWidget(self.outputFileDirectoryLabel)
+        layout.addWidget(self.outputFilenameLabel)
+        layout.addWidget(self.outputFrameNumButton)
+        layout.addWidget(self.outputTimestampButton)
+        layout.addWidget(self.thresholdLabel)
+        layout.addWidget(self.thresholdEntry)
+        layout.addWidget(self.analysisButton)
+        layout.addWidget(self.progressBar)
+        layout.addWidget(self.starvationButton)
+        self.centralWidget.setLayout(layout)
 
-# establish grid in root called mainframe
-mainframe = ttk.Frame(root, padding="3 3 12 12")
-mainframe.grid(column=0, row=0)
-root.columnconfigure(0, weight=1)
-root.rowconfigure(0, weight=1)
+    def pick_new_input(self):
+        dialog = QFileDialog()
+        folder_path = dialog.getExistingDirectory(None, "Select Input Folder")
+        global input_folder
+        input_folder = str(folder_path)
+        self.inputFileDirectoryLabel.setText(str(folder_path))
+        # reset the progress bar to 0
+        self.progressBar.setValue(0)
+        self.analysisButton.setEnabled(True)
 
-# Get the input folder directory.
-# This directory will hold all of the video files to be analyzed.
-folder_path_in = StringVar()
-inputlabel = Label(master=mainframe, textvariable=folder_path_in, font=('Open Sans', 12))
-inputlabel.grid(row=0, column=1)
-inputbuttonimg = PhotoImage(file="assets/button_input-folder.png")
-inputbutton = Button(master=mainframe, text="Input Folder", command=browse_button_in)
-inputbutton.config(image=inputbuttonimg)
-inputbutton.grid(row=0, column=0)
+    def pick_new_output(self):
+        dialog = QFileDialog()
+        folder_path = dialog.getExistingDirectory(None, "Select Output Folder")
+        global output_folder
+        output_folder = str(folder_path)
+        self.outputFileDirectoryLabel.setText(str(folder_path))
+        # reset the progress bar to 0
+        self.progressBar.setValue(0)
+        self.analysisButton.setEnabled(True)
 
-# Get the output folder directory.
-# This directory will hold all of the image frames after analysis.
-folder_path_out = StringVar()
-outputlabel = Label(master=mainframe, textvariable=folder_path_out, font=('Open Sans', 12))
-outputlabel.grid(row=1, column=1)
-outputbuttonimg = PhotoImage(file="assets/button_output-folder.png")
-outputbutton = Button(master=mainframe, text="Output Folder", command=browse_button_out)
-outputbutton.config(image=outputbuttonimg)
-outputbutton.grid(row=1, column=0)
+    def btnstate(self, b):
+        global buttonState
+        if b.text() == "Frame Number":
+            if b.isChecked() == True:
+                buttonState = True
+                print(b.text()+" is selected")
+            else:
+                buttonState = False
+                print(b.text()+" is deselected")
 
-# input for the Threshold.
-# Input can range from 10,000 all the way to 500,000 while giving good results.
-# default threshold will give sparse values, and should be lowered during use.
-thresholdsetpoint = StringVar()
-thresholdsetpoint.set(500000)
-thresholdlabel = Label(master=mainframe, text="Threshold Select", font=('Open Sans', 12))
-thresholdlabel.grid(row=2, column=0)
-threshold = Entry(master=mainframe, textvariable=thresholdsetpoint, font=('Open Sans', 12))
-threshold.grid(row=2, column=1)
+    def runLongTask(self):
+        # set the threshold
+        global threshold
+        threshold = self.thresholdEntry.text()
+        # Step 2: Create a QThread object
+        self.thread = QThread()
+        # Step 3: Create a worker object
+        self.worker = Worker()
+        # Step 4: Move worker to the thread
+        self.worker.moveToThread(self.thread)
+        # setup progress bar signal
+        self.worker.threadProgress.connect(self.onCountChanged)
+        # Step 5: Connect signals and slots
+        self.thread.started.connect(self.worker.run)
+        self.worker.finished.connect(self.thread.quit)
+        self.worker.finished.connect(self.worker.deleteLater)
+        self.thread.finished.connect(self.thread.deleteLater)
+        # self.worker.progress.connect(self.reportProgress)
+        # Step 6: Start the thread
+        self.thread.start()
 
-# Analyze button
-# This should start the analysis, and give some kind of feedback.
-analysislabel = Label(master=mainframe, text='Perform Analysis?', font=('Open Sans', 12))
-analysislabel.grid(row=3, column=0)
-analysisbuttonimg = PhotoImage(file="assets/button_analyze.png")
-analysisbutton = Button(master=mainframe,
-                        text='Analyze!',
-                        command=execute_analysis)
-analysisbutton.config(image=analysisbuttonimg)
-analysisbutton.grid(row=3, column=1)
+        # Final resets
+        self.analysisButton.setEnabled(False)
+        self.thread.finished.connect(self.enableAnalysisButton)
+        # self.thread.finished.connect(
+        #     lambda: self.analysisButton.setEnabled(True)
+        # )
 
-# Progress Bar
-# A progress bar can be installed here, although since that requires multithreading
-# I am not super exited to get into it until the whole system is working.
-# For now, a placeholder bar gets to occupy the slot.
-analysisprogress = ttk.Progressbar(master=root,
-                                   orient=HORIZONTAL,
-                                   length=600,
-                                   mode='determinate')
-analysisprogress.grid(row=1, column=0)
+    def onCountChanged(self, value):
+        self.progressBar.setValue(value)
 
-# Instructions Text Box
-# This sits below the mainframe, and gives instructions on running the software.
-instructions = '''Select an input folder with lightning videos, then select a
-folder to output the image results. The default threshold of 500,000 is
-agressive; if you don't get many images after processing, reduce the threshold
-by factors of 10 until you do. Clicking 'Analyze!' will start the process. You
-can watch the files in real time in your output folder to verify that the
-script is running.
-https://blablabliam.github.io'''
-instructionbox = Label(master=root, text=instructions, font=('Open Sans', 10))
-instructionbox.grid(row=2, column=0)
+    def enableAnalysisButton(self):
+        self.analysisButton.setEnabled(True)
 
-# establish mainframe padding between children
-# for child in mainframe.winfo_children():
-#     child.grid_configure(padx=5, pady=5)
 
-inputlabel.focus()
+app = QApplication(sys.argv)
 
-# executes the main window.
-root.mainloop()
+# Dark Mode code
+# Force the style to be the same on all OSs:
+app.setStyle("Fusion")
+
+# Now use a palette to switch to dark colors:
+palette = QPalette()
+palette.setColor(QPalette.Window, QColor(53, 53, 53))
+palette.setColor(QPalette.WindowText, Qt.white)
+palette.setColor(QPalette.Base, QColor(25, 25, 25))
+palette.setColor(QPalette.AlternateBase, QColor(53, 53, 53))
+palette.setColor(QPalette.ToolTipBase, Qt.black)
+palette.setColor(QPalette.ToolTipText, Qt.white)
+palette.setColor(QPalette.Text, Qt.white)
+palette.setColor(QPalette.Button, QColor(53, 53, 53))
+palette.setColor(QPalette.ButtonText, Qt.white)
+palette.setColor(QPalette.BrightText, Qt.red)
+palette.setColor(QPalette.Link, QColor(42, 130, 218))
+palette.setColor(QPalette.Highlight, QColor(42, 130, 218))
+palette.setColor(QPalette.HighlightedText, Qt.black)
+app.setPalette(palette)
+
+# finish building window
+win = Window()
+win.show()
+sys.exit(app.exec_())
